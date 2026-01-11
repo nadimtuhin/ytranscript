@@ -1,0 +1,58 @@
+{
+  "name": "ytranscript",
+  "version": "0.1.0",
+  "description": "Fast YouTube transcript extraction with bulk processing, Google Takeout support, and multiple output formats",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ytranscript": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target bun",
+    "dev": "bun run --watch src/cli.ts",
+    "test": "bun test",
+    "lint": "bunx @biomejs/biome check --write ./src",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "youtube",
+    "transcript",
+    "captions",
+    "subtitles",
+    "bulk",
+    "google-takeout",
+    "cli",
+    "bun"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ytranscript"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "p-limit": "^6.1.0",
+    "linkedom": "^0.18.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
