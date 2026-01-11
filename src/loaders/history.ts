@@ -2,6 +2,7 @@
  * Load YouTube watch history from Google Takeout JSON
  */
 
+import { readTextFile } from '../lib/fs';
 import type { WatchHistoryMeta } from '../types';
 
 interface TakeoutHistoryItem {
@@ -34,8 +35,7 @@ function extractVideoIdFromUrl(url: string): string | null {
  * Load watch history from Google Takeout JSON file
  */
 export async function loadWatchHistory(filePath: string): Promise<WatchHistoryMeta[]> {
-  const file = Bun.file(filePath);
-  const text = await file.text();
+  const text = await readTextFile(filePath);
   const data: TakeoutHistoryItem[] = JSON.parse(text);
 
   const results: WatchHistoryMeta[] = [];

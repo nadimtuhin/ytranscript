@@ -2,6 +2,7 @@
  * Load YouTube watch-later playlist from Google Takeout CSV
  */
 
+import { readTextFile } from '../lib/fs';
 import type { WatchHistoryMeta } from '../types';
 
 interface CSVRow {
@@ -67,8 +68,7 @@ function parseCSVLine(line: string): string[] {
  * Load watch-later playlist from Google Takeout CSV file
  */
 export async function loadWatchLater(filePath: string): Promise<WatchHistoryMeta[]> {
-  const file = Bun.file(filePath);
-  const text = await file.text();
+  const text = await readTextFile(filePath);
   const rows = parseCSV(text);
 
   const results: WatchHistoryMeta[] = [];

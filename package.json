@@ -1,13 +1,12 @@
 {
   "name": "@nadimtuhin/ytranscript",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "@nadimtuhin/ytranscript": "dist/cli.js",
     "ytranscript": "dist/cli.js",
     "ytranscript-mcp": "dist/mcp.js"
   },
@@ -17,11 +16,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target bun && bun build ./src/mcp.ts --outdir ./dist --target node",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target node && bun build ./src/mcp.ts --outdir ./dist --target node",
     "dev": "bun run --watch src/cli.ts",
     "dev:mcp": "bun run --watch src/mcp.ts",
     "test": "bun test",
@@ -61,6 +58,7 @@
     "zod": "^4.3.5"
   },
   "engines": {
+    "node": ">=18.0.0",
     "bun": ">=1.0.0"
   }
 }

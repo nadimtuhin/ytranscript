@@ -3,6 +3,7 @@
  */
 
 import { extractVideoId } from '../lib/fetcher';
+import { fileExists, readTextFile } from '../lib/fs';
 import type { WatchHistoryMeta } from '../types';
 import { loadWatchHistory } from './history';
 import { loadWatchLater } from './watchLater';
@@ -55,12 +56,12 @@ export async function loadProcessedIds(jsonlPath: string): Promise<Set<string>> 
   const ids = new Set<string>();
 
   try {
-    const file = Bun.file(jsonlPath);
-    if (!(await file.exists())) {
+    const exists = await fileExists(jsonlPath);
+    if (!exists) {
       return ids;
     }
 
-    const text = await file.text();
+    const text = await readTextFile(jsonlPath);
     const lines = text.split('\n').filter((l) => l.trim());
 
     for (const line of lines) {

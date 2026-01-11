@@ -2,6 +2,7 @@
  * Output writers for different formats
  */
 
+import { appendTextFile, fileExists, readTextFile, writeTextFile } from '../lib/fs';
 import type { OutputOptions, Transcript, TranscriptResult } from '../types';
 
 /**
@@ -15,9 +16,9 @@ export async function writeJsonl(
   const content = `${lines.join('\n')}\n`;
 
   if (options.append) {
-    await Bun.write(options.path, content, { mode: 'a' as unknown as number });
+    await appendTextFile(options.path, content);
   } else {
-    await Bun.write(options.path, content);
+    await writeTextFile(options.path, content);
   }
 }
 
@@ -25,10 +26,10 @@ export async function writeJsonl(
  * Append a single result to JSONL file (for streaming)
  */
 export async function appendJsonl(result: TranscriptResult, path: string): Promise<void> {
-  const file = Bun.file(path);
-  const existing = (await file.exists()) ? await file.text() : '';
+  const exists = await fileExists(path);
+  const existing = exists ? await readTextFile(path) : '';
   const newContent = `${existing + JSON.stringify(result)}\n`;
-  await Bun.write(path, newContent);
+  await writeTextFile(path, newContent);
 }
 
 /**
@@ -67,17 +68,17 @@ export async function writeCsv(results: TranscriptResult[], options: OutputOptio
   ].join('\n');
 
   if (options.append) {
-    const file = Bun.file(options.path);
-    const existing = (await file.exists()) ? await file.text() : '';
+    const exists = await fileExists(options.path);
+    const existing = exists ? await readTextFile(options.path) : '';
     // Skip header if file already has content
     const content = existing
       ? `${rows
           .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
           .join('\n')}\n`
       : `${csvContent}\n`;
-    await Bun.write(options.path, existing + content);
+    await writeTextFile(options.path, existing + content);
   } else {
-    await Bun.write(options.path, `${csvContent}\n`);
+    await writeTextFile(options.path, `${csvContent}\n`);
   }
 }
 

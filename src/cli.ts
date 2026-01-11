@@ -1,8 +1,9 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /**
  * ytranscript CLI - Bulk YouTube transcript extraction
  */
 
+import { readFile, writeFile } from 'node:fs/promises';
 import { program } from 'commander';
 import { version } from '../package.json';
 import {
@@ -71,7 +72,7 @@ program
       }
 
       if (options.output) {
-        await Bun.write(options.output, output);
+        await writeFile(options.output, output, 'utf-8');
         console.log(green(`Written to ${options.output}`));
       } else {
         console.log(output);
@@ -134,7 +135,7 @@ program
     // Load from file
     if (options.file) {
       try {
-        const content = await Bun.file(options.file).text();
+        const content = await readFile(options.file, 'utf-8');
         const ids = content
           .split('\n')
           .map((l) => l.trim())
