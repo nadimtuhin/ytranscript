@@ -1,13 +1,14 @@
 {
   "name": "ytranscript",
   "version": "0.1.0",
-  "description": "Fast YouTube transcript extraction with bulk processing, Google Takeout support, and multiple output formats",
+  "description": "Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "ytranscript": "./dist/cli.js"
+    "ytranscript": "./dist/cli.js",
+    "ytranscript-mcp": "./dist/mcp.js"
   },
   "exports": {
     ".": {
@@ -19,8 +20,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target bun",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target bun && bun build ./src/mcp.ts --outdir ./dist --target node",
     "dev": "bun run --watch src/cli.ts",
+    "dev:mcp": "bun run --watch src/mcp.ts",
     "test": "bun test",
     "lint": "bunx @biomejs/biome check --write ./src",
     "typecheck": "tsc --noEmit",
@@ -34,13 +36,16 @@
     "bulk",
     "google-takeout",
     "cli",
+    "mcp",
+    "model-context-protocol",
+    "ai",
     "bun"
   ],
   "author": "",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/ytranscript"
+    "url": "https://github.com/nadimtuhin/ytranscript"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
@@ -48,9 +53,11 @@
     "typescript": "^5.6.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "commander": "^12.1.0",
+    "linkedom": "^0.18.0",
     "p-limit": "^6.1.0",
-    "linkedom": "^0.18.0"
+    "zod": "^4.3.5"
   },
   "engines": {
     "bun": ">=1.0.0"

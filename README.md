@@ -1,12 +1,13 @@
 # ytranscript
 
-Fast YouTube transcript extraction with bulk processing, Google Takeout support, and multiple output formats.
+Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats.
 
 Built with [Bun](https://bun.sh) for maximum performance.
 
 ## Features
 
 - **Direct YouTube API** - No third-party services, uses YouTube's innertube API
+- **MCP Server** - Use with Claude, Cursor, and other AI assistants via Model Context Protocol
 - **Bulk processing** - Process thousands of videos with concurrency control
 - **Google Takeout support** - Import from watch history JSON and watch-later CSV
 - **Resume-safe** - Automatically skips already-processed videos
@@ -219,3 +220,82 @@ interface BulkOptions extends FetchOptions {
 ## License
 
 MIT
+
+---
+
+## MCP Server (Model Context Protocol)
+
+ytranscript includes an MCP server that allows AI assistants like Claude to fetch YouTube transcripts directly.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_transcript` | Fetch transcript for a YouTube video with format options (text, segments, srt, vtt) |
+| `get_transcript_languages` | List available caption languages for a video |
+| `extract_video_id` | Extract video ID from various YouTube URL formats |
+| `get_transcripts_bulk` | Fetch transcripts for multiple videos at once |
+
+### Setup with Claude Desktop
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "ytranscript": {
+      "command": "npx",
+      "args": ["-y", "ytranscript-mcp"]
+    }
+  }
+}
+```
+
+Or if installed globally:
+
+```json
+{
+  "mcpServers": {
+    "ytranscript": {
+      "command": "ytranscript-mcp"
+    }
+  }
+}
+```
+
+### Setup with Cursor
+
+Add to your Cursor MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "ytranscript": {
+      "command": "npx",
+      "args": ["-y", "ytranscript-mcp"]
+    }
+  }
+}
+```
+
+### Example Usage in Claude
+
+Once configured, you can ask Claude:
+
+- "Get the transcript for this YouTube video: https://youtube.com/watch?v=dQw4w9WgXcQ"
+- "What languages are available for this video?"
+- "Summarize the transcript of this video"
+- "Get transcripts for these 5 videos and compare their content"
+
+### Running the MCP Server Manually
+
+```bash
+# Via npx
+npx ytranscript-mcp
+
+# Or if installed globally
+ytranscript-mcp
+
+# For development
+bun run dev:mcp
+```
