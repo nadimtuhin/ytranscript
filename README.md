@@ -19,10 +19,13 @@ Built with [Bun](https://bun.sh) for maximum performance.
 
 ```bash
 # Install globally
-bun install -g ytranscript
+npm install -g @nadimtuhin/ytranscript
 
 # Or use locally in a project
-bun add ytranscript
+npm add @nadimtuhin/ytranscript
+
+# With bun
+bun add @nadimtuhin/ytranscript
 ```
 
 ## CLI Usage
@@ -84,7 +87,7 @@ ytranscript bulk \
 ### Fetch a single transcript
 
 ```typescript
-import { fetchTranscript } from 'ytranscript';
+import { fetchTranscript } from '@nadimtuhin/ytranscript';
 
 const transcript = await fetchTranscript('dQw4w9WgXcQ', {
   languages: ['en', 'es'], // Preference order
@@ -105,7 +108,7 @@ import {
   loadWatchLater,
   mergeVideoSources,
   processVideos,
-} from 'ytranscript';
+} from '@nadimtuhin/ytranscript';
 
 // Load from Google Takeout
 const history = await loadWatchHistory('./watch-history.json');
@@ -132,7 +135,7 @@ const transcripts = results.filter((r) => r.transcript);
 ### Streaming for large datasets
 
 ```typescript
-import { streamVideos, appendJsonl } from 'ytranscript';
+import { streamVideos, appendJsonl } from '@nadimtuhin/ytranscript';
 
 for await (const result of streamVideos(videos, { concurrency: 4 })) {
   // Write each result immediately (resume-safe)
@@ -143,7 +146,7 @@ for await (const result of streamVideos(videos, { concurrency: 4 })) {
 ### Output formatting
 
 ```typescript
-import { fetchTranscript, formatSrt, formatVtt, formatText } from 'ytranscript';
+import { fetchTranscript, formatSrt, formatVtt, formatText } from '@nadimtuhin/ytranscript';
 
 const transcript = await fetchTranscript('dQw4w9WgXcQ');
 
