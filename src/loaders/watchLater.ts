@@ -21,11 +21,11 @@ function parseCSV(text: string): CSVRow[] {
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
     const row: CSVRow = {};
-    
+
     for (let j = 0; j < headers.length; j++) {
       row[headers[j]] = values[j] || '';
     }
-    
+
     rows.push(row);
   }
 
@@ -66,9 +66,7 @@ function parseCSVLine(line: string): string[] {
 /**
  * Load watch-later playlist from Google Takeout CSV file
  */
-export async function loadWatchLater(
-  filePath: string
-): Promise<WatchHistoryMeta[]> {
+export async function loadWatchLater(filePath: string): Promise<WatchHistoryMeta[]> {
   const file = Bun.file(filePath);
   const text = await file.text();
   const rows = parseCSV(text);
@@ -77,11 +75,8 @@ export async function loadWatchLater(
 
   for (const row of rows) {
     // Handle different possible column names
-    const videoId = row['Video ID'] || row['video_id'] || row['Video Id'];
-    const addedAt =
-      row['Playlist Video Creation Timestamp'] ||
-      row['added_at'] ||
-      row['Added At'];
+    const videoId = row['Video ID'] || row.video_id || row['Video Id'];
+    const addedAt = row['Playlist Video Creation Timestamp'] || row.added_at || row['Added At'];
 
     if (!videoId) continue;
 

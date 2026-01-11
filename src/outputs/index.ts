@@ -2,7 +2,7 @@
  * Output writers for different formats
  */
 
-import type { TranscriptResult, Transcript, OutputOptions } from '../types';
+import type { OutputOptions, Transcript, TranscriptResult } from '../types';
 
 /**
  * Write results to JSONL format (one JSON object per line)
@@ -12,7 +12,7 @@ export async function writeJsonl(
   options: OutputOptions
 ): Promise<void> {
   const lines = results.map((r) => JSON.stringify(r));
-  const content = lines.join('\n') + '\n';
+  const content = `${lines.join('\n')}\n`;
 
   if (options.append) {
     await Bun.write(options.path, content, { mode: 'a' as unknown as number });
@@ -24,23 +24,17 @@ export async function writeJsonl(
 /**
  * Append a single result to JSONL file (for streaming)
  */
-export async function appendJsonl(
-  result: TranscriptResult,
-  path: string
-): Promise<void> {
+export async function appendJsonl(result: TranscriptResult, path: string): Promise<void> {
   const file = Bun.file(path);
   const existing = (await file.exists()) ? await file.text() : '';
-  const newContent = existing + JSON.stringify(result) + '\n';
+  const newContent = `${existing + JSON.stringify(result)}\n`;
   await Bun.write(path, newContent);
 }
 
 /**
  * Write results to CSV format
  */
-export async function writeCsv(
-  results: TranscriptResult[],
-  options: OutputOptions
-): Promise<void> {
+export async function writeCsv(results: TranscriptResult[], options: OutputOptions): Promise<void> {
   const headers = [
     'video_id',
     'source',
@@ -69,9 +63,7 @@ export async function writeCsv(
 
   const csvContent = [
     headers.join(','),
-    ...rows.map((row) =>
-      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-    ),
+    ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
   ].join('\n');
 
   if (options.append) {
@@ -79,15 +71,13 @@ export async function writeCsv(
     const existing = (await file.exists()) ? await file.text() : '';
     // Skip header if file already has content
     const content = existing
-      ? rows
-          .map((row) =>
-            row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-          )
-          .join('\n') + '\n'
-      : csvContent + '\n';
+      ? `${rows
+          .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+          .join('\n')}\n`
+      : `${csvContent}\n`;
     await Bun.write(options.path, existing + content);
   } else {
-    await Bun.write(options.path, csvContent + '\n');
+    await Bun.write(options.path, `${csvContent}\n`);
   }
 }
 
@@ -116,14 +106,14 @@ export function formatSrt(transcript: Transcript): string {
 export function formatVtt(transcript: Transcript): string {
   const lines: string[] = ['WEBVTT', ''];
 
-  transcript.segments.forEach((segment) => {
+  for (const segment of transcript.segments) {
     const startTime = formatVttTime(segment.start);
     const endTime = formatVttTime(segment.start + segment.duration);
 
     lines.push(`${startTime} --> ${endTime}`);
     lines.push(segment.text);
     lines.push('');
-  });
+  }
 
   return lines.join('\n');
 }
@@ -131,17 +121,12 @@ export function formatVtt(transcript: Transcript): string {
 /**
  * Format transcript as plain text
  */
-export function formatText(
-  transcript: Transcript,
-  includeTimestamps = false
-): string {
+export function formatText(transcript: Transcript, includeTimestamps = false): string {
   if (!includeTimestamps) {
     return transcript.text;
   }
 
-  return transcript.segments
-    .map((s) => `[${formatTimestamp(s.start)}] ${s.text}`)
-    .join('\n');
+  return transcript.segments.map((s) => `[${formatTimestamp(s.start)}] ${s.text}`).join('\n');
 }
 
 // Helper functions

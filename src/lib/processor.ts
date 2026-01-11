@@ -4,12 +4,8 @@
  */
 
 import pLimit from 'p-limit';
+import type { BulkOptions, TranscriptResult, WatchHistoryMeta } from '../types';
 import { fetchTranscript } from './fetcher';
-import type {
-  TranscriptResult,
-  WatchHistoryMeta,
-  BulkOptions,
-} from '../types';
 
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_PAUSE_AFTER = 10;
@@ -42,15 +38,12 @@ export async function processVideos(
   const results: TranscriptResult[] = [];
   let completed = 0;
 
-  const processOne = async (
-    meta: WatchHistoryMeta
-  ): Promise<TranscriptResult> => {
+  const processOne = async (meta: WatchHistoryMeta): Promise<TranscriptResult> => {
     try {
       const transcript = await fetchTranscript(meta.videoId, fetchOptions);
       return { meta, transcript };
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return { meta, transcript: null, error: message };
     }
   };
@@ -115,8 +108,7 @@ export async function* streamVideos(
         const transcript = await fetchTranscript(meta.videoId, fetchOptions);
         return { meta, transcript } as TranscriptResult;
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown error';
+        const message = error instanceof Error ? error.message : 'Unknown error';
         return { meta, transcript: null, error: message } as TranscriptResult;
       }
     });

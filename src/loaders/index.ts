@@ -3,9 +3,9 @@
  */
 
 import { extractVideoId } from '../lib/fetcher';
+import type { WatchHistoryMeta } from '../types';
 import { loadWatchHistory } from './history';
 import { loadWatchLater } from './watchLater';
-import type { WatchHistoryMeta } from '../types';
 
 export { loadWatchHistory } from './history';
 export { loadWatchLater } from './watchLater';
@@ -13,9 +13,7 @@ export { loadWatchLater } from './watchLater';
 /**
  * Create metadata entries from video IDs or URLs
  */
-export function fromVideoIds(
-  inputs: string[]
-): WatchHistoryMeta[] {
+export function fromVideoIds(inputs: string[]): WatchHistoryMeta[] {
   const results: WatchHistoryMeta[] = [];
 
   for (const input of inputs) {
@@ -24,9 +22,7 @@ export function fromVideoIds(
 
     results.push({
       videoId,
-      url: input.startsWith('http')
-        ? input
-        : `https://www.youtube.com/watch?v=${videoId}`,
+      url: input.startsWith('http') ? input : `https://www.youtube.com/watch?v=${videoId}`,
       source: 'manual',
     });
   }
@@ -38,9 +34,7 @@ export function fromVideoIds(
  * Merge multiple sources, deduplicating by video ID
  * Priority: history > watch_later > manual
  */
-export function mergeVideoSources(
-  ...sources: WatchHistoryMeta[][]
-): WatchHistoryMeta[] {
+export function mergeVideoSources(...sources: WatchHistoryMeta[][]): WatchHistoryMeta[] {
   const seen = new Map<string, WatchHistoryMeta>();
 
   for (const source of sources) {
@@ -57,9 +51,7 @@ export function mergeVideoSources(
 /**
  * Load processed video IDs from an existing JSONL file
  */
-export async function loadProcessedIds(
-  jsonlPath: string
-): Promise<Set<string>> {
+export async function loadProcessedIds(jsonlPath: string): Promise<Set<string>> {
   const ids = new Set<string>();
 
   try {

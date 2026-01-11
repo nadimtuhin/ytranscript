@@ -33,9 +33,7 @@ function extractVideoIdFromUrl(url: string): string | null {
 /**
  * Load watch history from Google Takeout JSON file
  */
-export async function loadWatchHistory(
-  filePath: string
-): Promise<WatchHistoryMeta[]> {
+export async function loadWatchHistory(filePath: string): Promise<WatchHistoryMeta[]> {
   const file = Bun.file(filePath);
   const text = await file.text();
   const data: TakeoutHistoryItem[] = JSON.parse(text);
@@ -55,9 +53,7 @@ export async function loadWatchHistory(
       videoId,
       title: item.title,
       url,
-      channel: channel
-        ? { name: channel.name, url: channel.url }
-        : undefined,
+      channel: channel ? { name: channel.name, url: channel.url } : undefined,
       watchedAt: item.time,
       source: 'history',
     });

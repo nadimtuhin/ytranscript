@@ -6,20 +6,20 @@
 import { program } from 'commander';
 import { version } from '../package.json';
 import {
-  fetchTranscript,
+  appendJsonl,
   extractVideoId,
-  processVideos,
-  streamVideos,
+  fetchTranscript,
+  formatSrt,
+  formatText,
+  formatVtt,
+  fromVideoIds,
+  loadProcessedIds,
   loadWatchHistory,
   loadWatchLater,
-  fromVideoIds,
   mergeVideoSources,
-  loadProcessedIds,
-  appendJsonl,
+  processVideos,
+  streamVideos,
   writeCsv,
-  formatSrt,
-  formatVtt,
-  formatText,
 } from './index';
 import type { TranscriptResult, WatchHistoryMeta } from './types';
 
@@ -66,7 +66,6 @@ program
         case 'vtt':
           output = formatVtt(transcript);
           break;
-        case 'text':
         default:
           output = formatText(transcript, options.timestamps);
       }
@@ -148,7 +147,9 @@ program
     }
 
     if (!sources.length) {
-      console.error(red('No input sources provided. Use --history, --watch-later, --videos, or --file'));
+      console.error(
+        red('No input sources provided. Use --history, --watch-later, --videos, or --file')
+      );
       process.exit(1);
     }
 
@@ -179,14 +180,12 @@ program
 
     // Stream results for real-time output
     for await (const result of streamVideos(toProcess, {
-      concurrency: parseInt(options.concurrency, 10),
-      pauseAfter: parseInt(options.pauseAfter, 10),
-      pauseDuration: parseInt(options.pauseMs, 10),
+      concurrency: Number.parseInt(options.concurrency, 10),
+      pauseAfter: Number.parseInt(options.pauseAfter, 10),
+      pauseDuration: Number.parseInt(options.pauseMs, 10),
       languages: options.lang.split(','),
     })) {
-      const status = result.transcript
-        ? green('OK')
-        : red('FAIL');
+      const status = result.transcript ? green('OK') : red('FAIL');
       const title = result.meta.title?.slice(0, 50) || result.meta.videoId;
       console.log(`[${result.meta.videoId}] ${status} ${dim(title)}`);
 
@@ -228,29 +227,29 @@ program
 
     try {
       // Fetch player response to get available tracks
-      const response = await fetch(
-        'https://www.youtube.com/youtubei/v1/player?prettyPrint=false',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            context: {
-              client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' },
-            },
-            videoId,
-          }),
-        }
-      );
+      const response = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: {
+            client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' },
+          },
+          videoId,
+        }),
+      });
 
       const data = (await response.json()) as {
         captions?: {
           playerCaptionsTracklistRenderer?: {
-            captionTracks?: Array<{ languageCode: string; kind?: string; name?: { simpleText?: string } }>;
+            captionTracks?: Array<{
+              languageCode: string;
+              kind?: string;
+              name?: { simpleText?: string };
+            }>;
           };
         };
       };
-      const tracks =
-        data.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+      const tracks = data.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
 
       if (!tracks.length) {
         console.log(yellow('No captions available for this video'));
