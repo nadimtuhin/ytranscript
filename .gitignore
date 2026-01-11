@@ -6,3 +6,4 @@ transcripts.jsonl
 transcripts.csv
 *.srt
 *.vtt
+.claude/
