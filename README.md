@@ -18,13 +18,14 @@ Built with [Bun](https://bun.sh) for maximum performance.
 ## Installation
 
 ```bash
-# Install globally
+# Install globally (recommended)
 npm install -g @nadimtuhin/ytranscript
 
-# Or use locally in a project
-npm add @nadimtuhin/ytranscript
+# Or use with bunx (no install needed)
+bunx @nadimtuhin/ytranscript get VIDEO_ID
 
-# With bun
+# Or add to a project
+npm add @nadimtuhin/ytranscript
 bun add @nadimtuhin/ytranscript
 ```
 
