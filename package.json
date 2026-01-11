@@ -1,12 +1,15 @@
 {
   "name": "@nadimtuhin/ytranscript",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": "dist/cli.js",
+  "bin": {
+    "ytranscript": "dist/cli.js",
+    "ytranscript-mcp": "dist/mcp.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -22,7 +25,8 @@
     "test": "bun test",
     "lint": "bunx @biomejs/biome check --write ./src",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "postinstall": "chmod +x dist/cli.js dist/mcp.js || true"
   },
   "keywords": [
     "youtube",
