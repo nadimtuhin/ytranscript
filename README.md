@@ -8,6 +8,7 @@
 [![Bun](https://img.shields.io/badge/bun-%3E%3D1.0.0-black.svg)](https://bun.sh/)
 [![Test Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)](https://github.com/nadimtuhin/ytranscript)
 [![Tests](https://img.shields.io/badge/tests-83%20passing-brightgreen.svg)](https://github.com/nadimtuhin/ytranscript)
+[![Blog Post](https://img.shields.io/badge/blog-Read%20the%20Story-blue.svg)](https://nadimtuhin.com/blog/ytranscript-mcp-youtube-transcripts)
 
 Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats.
 
