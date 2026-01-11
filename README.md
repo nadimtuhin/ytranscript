@@ -4,45 +4,95 @@
 [![npm downloads](https://img.shields.io/npm/dm/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
 [![CI](https://github.com/nadimtuhin/ytranscript/actions/workflows/ci.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Bun](https://img.shields.io/badge/bun-%3E%3D1.0.0-black.svg)](https://bun.sh/)
-[![Test Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)](https://github.com/nadimtuhin/ytranscript)
-[![Tests](https://img.shields.io/badge/tests-83%20passing-brightgreen.svg)](https://github.com/nadimtuhin/ytranscript)
 
-Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats.
-
-Built with [Bun](https://bun.sh) for maximum performance.
+Extract transcripts from your entire YouTube watch history in minutes. Build AI-powered video summaries, searchable archives, or feed transcripts directly to Claude, Cursor, and other AI assistants via the built-in MCP server.
 
 **[Read the blog post: "Automating My Second Brain with YouTube Transcripts"](https://nadimtuhin.com/blog/ytranscript-mcp-youtube-transcripts)**
 
-## Features
+## Why ytranscript?
 
-- **Direct YouTube API** - No third-party services, uses YouTube's innertube API
-- **MCP Server** - Use with Claude, Cursor, and other AI assistants via Model Context Protocol
-- **Bulk processing** - Process thousands of videos with concurrency control
-- **Google Takeout support** - Import from watch history JSON and watch-later CSV
+- **No API keys required** - Uses YouTube's public innertube API directly
+- **Works with AI assistants** - Built-in MCP server for Claude, Cursor, and others
+- **Bulk processing** - Process thousands of videos from Google Takeout exports
 - **Resume-safe** - Automatically skips already-processed videos
-- **Multiple output formats** - JSON, JSONL, CSV, SRT, VTT, plain text
-- **Language selection** - Choose preferred transcript languages
-- **Programmatic API** - Use as a library in your TypeScript/JavaScript projects
+- **Multiple formats** - JSON, JSONL, CSV, SRT, VTT, plain text
+
+## Quick Start
+
+```bash
+# Get a transcript in 10 seconds
+npx @nadimtuhin/ytranscript get dQw4w9WgXcQ
+
+# Output: "We're no strangers to love, you know the rules..."
+```
 
 ## Installation
 
 ```bash
-# Install globally (recommended)
+# Global install (recommended for CLI usage)
 npm install -g @nadimtuhin/ytranscript
 
-# Or use with bunx (no install needed)
-bunx @nadimtuhin/ytranscript get VIDEO_ID
+# Or use with npx (no install)
+npx @nadimtuhin/ytranscript get VIDEO_ID
 
-# Or add to a project
+# Add to a project (for library usage)
 npm add @nadimtuhin/ytranscript
-bun add @nadimtuhin/ytranscript
 ```
+
+**Runtimes supported:** Node.js 18+ and Bun 1.0+
+
+## MCP Server (AI Assistant Integration)
+
+ytranscript includes an MCP (Model Context Protocol) server that lets Claude, Cursor, and other AI assistants fetch YouTube transcripts directly.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_transcript` | Fetch transcript with format options (text, segments, srt, vtt) |
+| `get_transcript_languages` | List available caption languages for a video |
+| `extract_video_id` | Extract video ID from various YouTube URL formats |
+| `get_transcripts_bulk` | Fetch transcripts for multiple videos at once |
+
+### Setup with Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+```json
+{
+  "mcpServers": {
+    "ytranscript": {
+      "command": "npx",
+      "args": ["-y", "@nadimtuhin/ytranscript", "mcp"]
+    }
+  }
+}
+```
+
+Or if installed globally:
+
+```json
+{
+  "mcpServers": {
+    "ytranscript": {
+      "command": "ytranscript-mcp"
+    }
+  }
+}
+```
+
+### Example Prompts for Claude
+
+Once configured, you can ask Claude:
+
+- "Get the transcript for this YouTube video: https://youtube.com/watch?v=dQw4w9WgXcQ"
+- "Summarize the key points from this video"
+- "What languages are available for this video's captions?"
+- "Get transcripts for these 5 videos and compare their content"
 
 ## CLI Usage
 
-### Fetch a single transcript
+### Single Video
 
 ```bash
 # Basic usage (outputs plain text)
@@ -61,13 +111,17 @@ ytranscript get dQw4w9WgXcQ --format srt -o video.srt
 ytranscript get dQw4w9WgXcQ --format json
 ```
 
-### Check available languages
+### Check Available Languages
 
 ```bash
 ytranscript info dQw4w9WgXcQ
+# Output:
+#   en     English (auto-generated)
+#   es     Spanish
+#   fr     French
 ```
 
-### Bulk processing
+### Bulk Processing
 
 ```bash
 # From Google Takeout exports
@@ -83,36 +137,48 @@ ytranscript bulk --videos "dQw4w9WgXcQ,jNQXAC9IVRw,9bZkp7q19f0"
 # From a file (one ID or URL per line)
 ytranscript bulk --file videos.txt
 
-# Resume a previous run
+# Resume a previous run (skips already-processed videos)
 ytranscript bulk --history watch-history.json --resume
+```
 
-# Control concurrency and rate limiting
+### Rate Limiting
+
+YouTube may rate-limit requests. Use these flags to control pacing:
+
+```bash
 ytranscript bulk \
   --history watch-history.json \
-  --concurrency 8 \
-  --pause-after 20 \
-  --pause-ms 3000
+  --concurrency 4 \      # Max concurrent requests (default: 4, safe: 1-8)
+  --pause-after 10 \     # Pause after N requests (default: 10)
+  --pause-ms 5000        # Pause duration in ms (default: 5000)
 ```
+
+**Recommended for large batches:** `--concurrency 2 --pause-after 10 --pause-ms 5000`
 
 ## Programmatic API
 
-### Fetch a single transcript
+### Fetch a Single Transcript
 
 ```typescript
 import { fetchTranscript } from '@nadimtuhin/ytranscript';
 
-const transcript = await fetchTranscript('dQw4w9WgXcQ', {
-  languages: ['en', 'es'], // Preference order
-  includeAutoGenerated: true,
-});
+try {
+  const transcript = await fetchTranscript('dQw4w9WgXcQ', {
+    languages: ['en', 'es'], // Preference order
+    includeAutoGenerated: true,
+  });
 
-console.log(transcript.text); // Full transcript text
-console.log(transcript.segments); // Array of { text, start, duration }
-console.log(transcript.language); // 'en'
-console.log(transcript.isAutoGenerated); // true/false
+  console.log(transcript.text);           // Full transcript text
+  console.log(transcript.segments);       // Array of { text, start, duration }
+  console.log(transcript.language);       // 'en'
+  console.log(transcript.isAutoGenerated); // true/false
+} catch (error) {
+  // See "Error Handling" section below
+  console.error(error.message);
+}
 ```
 
-### Bulk processing
+### Bulk Processing
 
 ```typescript
 import {
@@ -144,7 +210,7 @@ const results = await processVideos(videos, {
 const transcripts = results.filter((r) => r.transcript);
 ```
 
-### Streaming for large datasets
+### Streaming for Large Datasets
 
 ```typescript
 import { streamVideos, appendJsonl } from '@nadimtuhin/ytranscript';
@@ -155,26 +221,64 @@ for await (const result of streamVideos(videos, { concurrency: 4 })) {
 }
 ```
 
-### Output formatting
+### Output Formatting
 
 ```typescript
 import { fetchTranscript, formatSrt, formatVtt, formatText } from '@nadimtuhin/ytranscript';
+import { writeFile } from 'fs/promises';
 
 const transcript = await fetchTranscript('dQw4w9WgXcQ');
 
 // SRT subtitles
 const srt = formatSrt(transcript);
-await Bun.write('video.srt', srt);
+await writeFile('video.srt', srt);
 
 // VTT subtitles
 const vtt = formatVtt(transcript);
-await Bun.write('video.vtt', vtt);
+await writeFile('video.vtt', vtt);
 
 // Plain text with timestamps
 const text = formatText(transcript, true);
 // [0:00] First line of transcript
 // [0:05] Second line...
 ```
+
+## Error Handling
+
+The library throws errors for various failure cases:
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| `No captions available for this video` | Video has no captions/subtitles | Check with `ytranscript info` first |
+| `No suitable caption track found` | Requested language not available | Use `includeAutoGenerated: true` or different language |
+| `Caption track is empty` | Captions exist but have no content | Rare; try a different language |
+| `HTTP 429` | Rate limited by YouTube | Reduce concurrency, add pauses |
+| `HTTP 403` | Video is private or region-locked | Cannot access this video |
+
+```typescript
+try {
+  const transcript = await fetchTranscript(videoId);
+} catch (error) {
+  if (error.message.includes('No captions available')) {
+    console.log('This video has no subtitles');
+  } else if (error.message.includes('429')) {
+    console.log('Rate limited - slow down requests');
+  }
+}
+```
+
+## Limitations
+
+| Scenario | Supported |
+|----------|-----------|
+| Public videos with captions | ✅ Yes |
+| Auto-generated captions | ✅ Yes |
+| Manual/community captions | ✅ Yes |
+| Private videos | ❌ No |
+| Age-restricted videos | ❌ No |
+| Live streams (while live) | ❌ No |
+| Premiere videos (before premiere) | ❌ No |
+| Region-locked videos | ❌ No (unless you're in the allowed region) |
 
 ## Google Takeout
 
@@ -207,110 +311,47 @@ interface Transcript {
 
 interface TranscriptSegment {
   text: string;
-  start: number;  // seconds
-  duration: number;  // seconds
+  start: number;    // seconds
+  duration: number; // seconds
+}
+
+interface WatchHistoryMeta {
+  videoId: string;
+  title?: string;
+  url?: string;
+  channel?: { name?: string; url?: string };
+  watchedAt?: string;
+  source: 'history' | 'watch_later' | 'manual';
 }
 
 interface TranscriptResult {
   meta: WatchHistoryMeta;
   transcript: Transcript | null;
-  error?: string;
+  error?: string;  // Present when transcript is null
 }
 
 interface FetchOptions {
-  languages?: string[];
-  timeout?: number;
-  includeAutoGenerated?: boolean;
+  languages?: string[];          // Default: ['en']
+  timeout?: number;              // Default: 30000 (ms)
+  includeAutoGenerated?: boolean; // Default: true
 }
 
 interface BulkOptions extends FetchOptions {
-  concurrency?: number;
-  pauseAfter?: number;
-  pauseDuration?: number;
-  skipIds?: Set<string>;
+  concurrency?: number;    // Default: 4
+  pauseAfter?: number;     // Default: 10
+  pauseDuration?: number;  // Default: 5000 (ms)
+  skipIds?: Set<string>;   // Videos to skip
   onProgress?: (completed: number, total: number, result: TranscriptResult) => void;
 }
 ```
 
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+- Report bugs via [GitHub Issues](https://github.com/nadimtuhin/ytranscript/issues)
+- Security issues: see [SECURITY.md](SECURITY.md)
+
 ## License
 
 MIT
-
----
-
-## MCP Server (Model Context Protocol)
-
-ytranscript includes an MCP server that allows AI assistants like Claude to fetch YouTube transcripts directly.
-
-### Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `get_transcript` | Fetch transcript for a YouTube video with format options (text, segments, srt, vtt) |
-| `get_transcript_languages` | List available caption languages for a video |
-| `extract_video_id` | Extract video ID from various YouTube URL formats |
-| `get_transcripts_bulk` | Fetch transcripts for multiple videos at once |
-
-### Setup with Claude Desktop
-
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "ytranscript": {
-      "command": "npx",
-      "args": ["-y", "ytranscript-mcp"]
-    }
-  }
-}
-```
-
-Or if installed globally:
-
-```json
-{
-  "mcpServers": {
-    "ytranscript": {
-      "command": "ytranscript-mcp"
-    }
-  }
-}
-```
-
-### Setup with Cursor
-
-Add to your Cursor MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "ytranscript": {
-      "command": "npx",
-      "args": ["-y", "ytranscript-mcp"]
-    }
-  }
-}
-```
-
-### Example Usage in Claude
-
-Once configured, you can ask Claude:
-
-- "Get the transcript for this YouTube video: https://youtube.com/watch?v=dQw4w9WgXcQ"
-- "What languages are available for this video?"
-- "Summarize the transcript of this video"
-- "Get transcripts for these 5 videos and compare their content"
-
-### Running the MCP Server Manually
-
-```bash
-# Via npx
-npx ytranscript-mcp
-
-# Or if installed globally
-ytranscript-mcp
-
-# For development
-bun run dev:mcp
-```
