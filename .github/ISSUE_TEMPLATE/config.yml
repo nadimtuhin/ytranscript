@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/nadimtuhin/ytranscript#readme
+    about: Check the README for usage instructions
+  - name: Discussions
+    url: https://github.com/nadimtuhin/ytranscript/discussions
+    about: Ask questions and discuss ideas

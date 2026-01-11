@@ -18,7 +18,8 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target node && bun build ./src/mcp.ts --outdir ./dist --target node",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outdir ./dist --target node && bun build ./src/mcp.ts --outdir ./dist --target node && tsc --emitDeclarationOnly --declaration --outDir ./dist",
+    "build:types": "tsc --emitDeclarationOnly --declaration --outDir ./dist",
     "dev": "bun run --watch src/cli.ts",
     "dev:mcp": "bun run --watch src/mcp.ts",
     "test": "bun test",
