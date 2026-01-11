@@ -141,6 +141,30 @@ describe('appendJsonl', () => {
     expect(JSON.parse(lines[0]).meta.videoId).toBe('test123');
     expect(JSON.parse(lines[1]).meta.videoId).toBe('second');
   });
+
+  test('handles concurrent appends without data loss', async () => {
+    const path = join(tempDir, 'concurrent.jsonl');
+    const count = 20;
+
+    // Create 20 concurrent append operations
+    const promises = Array.from({ length: count }, (_, i) =>
+      appendJsonl({ ...mockResult, meta: { ...mockResult.meta, videoId: `video${i}` } }, path)
+    );
+
+    await Promise.all(promises);
+
+    const content = await readTextFile(path);
+    const lines = content.trim().split('\n');
+
+    // All 20 entries should be present (no data loss from race conditions)
+    expect(lines).toHaveLength(count);
+
+    // Verify all video IDs are present (order may vary)
+    const videoIds = lines.map((line) => JSON.parse(line).meta.videoId);
+    for (let i = 0; i < count; i++) {
+      expect(videoIds).toContain(`video${i}`);
+    }
+  });
 });
 
 describe('writeCsv', () => {

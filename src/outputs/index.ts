@@ -2,7 +2,7 @@
  * Output writers for different formats
  */
 
-import { appendTextFile, fileExists, readTextFile, writeTextFile } from '../lib/fs';
+import { appendTextFile, fileExists, writeTextFile } from '../lib/fs';
 import type { OutputOptions, Transcript, TranscriptResult } from '../types';
 
 /**
@@ -24,12 +24,10 @@ export async function writeJsonl(
 
 /**
  * Append a single result to JSONL file (for streaming)
+ * Uses atomic append to avoid race conditions in concurrent writes
  */
 export async function appendJsonl(result: TranscriptResult, path: string): Promise<void> {
-  const exists = await fileExists(path);
-  const existing = exists ? await readTextFile(path) : '';
-  const newContent = `${existing + JSON.stringify(result)}\n`;
-  await writeTextFile(path, newContent);
+  await appendTextFile(path, `${JSON.stringify(result)}\n`);
 }
 
 /**
@@ -69,14 +67,12 @@ export async function writeCsv(results: TranscriptResult[], options: OutputOptio
 
   if (options.append) {
     const exists = await fileExists(options.path);
-    const existing = exists ? await readTextFile(options.path) : '';
-    // Skip header if file already has content
-    const content = existing
-      ? `${rows
-          .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-          .join('\n')}\n`
-      : `${csvContent}\n`;
-    await writeTextFile(options.path, existing + content);
+    // Skip header if file already has content, use atomic append
+    const rowsContent = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const content = exists ? `${rowsContent}\n` : `${csvContent}\n`;
+    await appendTextFile(options.path, content);
   } else {
     await writeTextFile(options.path, `${csvContent}\n`);
   }
