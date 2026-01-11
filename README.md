@@ -1,5 +1,14 @@
 # ytranscript
 
+[![npm version](https://img.shields.io/npm/v/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
+[![npm downloads](https://img.shields.io/npm/dm/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
+[![CI](https://github.com/nadimtuhin/ytranscript/actions/workflows/ci.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Bun](https://img.shields.io/badge/bun-%3E%3D1.0.0-black.svg)](https://bun.sh/)
+[![Test Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)](https://github.com/nadimtuhin/ytranscript)
+[![Tests](https://img.shields.io/badge/tests-83%20passing-brightgreen.svg)](https://github.com/nadimtuhin/ytranscript)
+
 Fast YouTube transcript extraction with bulk processing, Google Takeout support, MCP server, and multiple output formats.
 
 Built with [Bun](https://bun.sh) for maximum performance.
