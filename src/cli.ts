@@ -10,6 +10,7 @@ import {
   appendJsonl,
   extractVideoId,
   fetchTranscript,
+  fetchVideoInfo,
   formatSrt,
   formatText,
   formatVtt,
@@ -22,13 +23,38 @@ import {
   streamVideos,
   writeCsv,
 } from './index';
-import type { TranscriptResult, WatchHistoryMeta } from './types';
+import type { ProxyConfig, TranscriptResult, WatchHistoryMeta } from './types';
 
 // ANSI colors
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
+
+/**
+ * Validate proxy URL format
+ */
+function validateProxyUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:', 'socks4:', 'socks5:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parse and validate proxy option
+ */
+function parseProxy(proxyUrl: string | undefined): ProxyConfig | undefined {
+  if (!proxyUrl) return undefined;
+  if (!validateProxyUrl(proxyUrl)) {
+    console.error(red(`Invalid proxy URL: ${proxyUrl}`));
+    console.error(dim('Expected format: http://[user:pass@]host:port'));
+    process.exit(1);
+  }
+  return { url: proxyUrl };
+}
 
 program
   .name('ytranscript')
@@ -43,6 +69,7 @@ program
   .option('-f, --format <format>', 'Output format: text, json, srt, vtt', 'text')
   .option('-t, --timestamps', 'Include timestamps in text output')
   .option('-o, --output <file>', 'Write to file instead of stdout')
+  .option('--proxy <url>', 'HTTP proxy URL (e.g., http://user:pass@host:port)')
   .action(async (video: string, options) => {
     const videoId = extractVideoId(video);
     if (!videoId) {
@@ -50,9 +77,12 @@ program
       process.exit(1);
     }
 
+    const proxy = parseProxy(options.proxy);
+
     try {
       const transcript = await fetchTranscript(videoId, {
         languages: options.lang.split(','),
+        proxy,
       });
 
       let output: string;
@@ -97,6 +127,7 @@ program
   .option('--pause-after <n>', 'Pause after N requests', '10')
   .option('--pause-ms <n>', 'Pause duration in ms', '5000')
   .option('-l, --lang <codes>', 'Preferred languages (comma-separated)', 'en')
+  .option('--proxy <url>', 'HTTP proxy URL (e.g., http://user:pass@host:port)')
   .option('--resume', 'Resume from previous run (skip already processed)')
   .action(async (options) => {
     const sources: WatchHistoryMeta[][] = [];
@@ -173,11 +204,12 @@ program
       return;
     }
 
-    console.log(`Processing ${toProcess.length} videos...\n`);
+    console.log(`Processing ${toProcess.length} videos...\\n`);
 
     let successCount = 0;
     let failCount = 0;
     const csvResults: TranscriptResult[] = [];
+    const proxy = parseProxy(options.proxy);
 
     // Stream results for real-time output
     for await (const result of streamVideos(toProcess, {
@@ -185,6 +217,7 @@ program
       pauseAfter: Number.parseInt(options.pauseAfter, 10),
       pauseDuration: Number.parseInt(options.pauseMs, 10),
       languages: options.lang.split(','),
+      proxy,
     })) {
       const status = result.transcript ? green('OK') : red('FAIL');
       const title = result.meta.title?.slice(0, 50) || result.meta.videoId;
@@ -219,38 +252,19 @@ program
 program
   .command('info <video>')
   .description('Show available transcript languages for a video')
-  .action(async (video: string) => {
+  .option('--proxy <url>', 'HTTP proxy URL (e.g., http://user:pass@host:port)')
+  .action(async (video: string, options) => {
     const videoId = extractVideoId(video);
     if (!videoId) {
       console.error(red(`Invalid video ID or URL: ${video}`));
       process.exit(1);
     }
 
-    try {
-      // Fetch player response to get available tracks
-      const response = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          context: {
-            client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' },
-          },
-          videoId,
-        }),
-      });
+    const proxy = parseProxy(options.proxy);
 
-      const data = (await response.json()) as {
-        captions?: {
-          playerCaptionsTracklistRenderer?: {
-            captionTracks?: Array<{
-              languageCode: string;
-              kind?: string;
-              name?: { simpleText?: string };
-            }>;
-          };
-        };
-      };
-      const tracks = data.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+    try {
+      // Fetch available tracks using the library function (which supports proxy)
+      const tracks = await fetchVideoInfo(videoId, { proxy });
 
       if (!tracks.length) {
         console.log(yellow('No captions available for this video'));

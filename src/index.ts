@@ -24,7 +24,7 @@
  */
 
 // Core fetcher
-export { fetchTranscript, extractVideoId } from './lib/fetcher';
+export { fetchTranscript, extractVideoId, fetchVideoInfo } from './lib/fetcher';
 
 // Bulk processor
 export { processVideos, streamVideos } from './lib/processor';
@@ -50,6 +50,7 @@ export {
 
 // Types
 export type {
+  ProxyConfig,
   Transcript,
   TranscriptSegment,
   TranscriptResult,
