@@ -48,9 +48,9 @@
     "url": "git+https://github.com/nadimtuhin/ytranscript.git"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.9",
     "@types/bun": "^1.1.0",
-    "typescript": "^5.6.0"
+    "typescript": "^6.0.2"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.2",
