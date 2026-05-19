@@ -54,14 +54,29 @@ Before using ytranscript, be aware of these limitations:
                  YouTube Innertube API (undocumented)
 ```
 
-## The Two-Step Process
+## The Three-Step Process
 
-### Step 1: Get Caption Track URLs
+As of v1.3.0, ytranscript uses the **ANDROID innertube client** instead of the WEB client.
+YouTube's WEB client now requires a Proof of Origin Token (POT/BotGuard) for server-side
+requests, which requires executing YouTube's obfuscated JavaScript. The ANDROID client
+is exempt from this restriction.
 
-First, we call YouTube's player API to get video metadata,
-including available caption tracks:
+### Step 1: Fetch the Watch Page and Extract the API Key
 
-**Endpoint:** `POST https://www.youtube.com/youtubei/v1/player`
+We fetch `https://www.youtube.com/watch?v=VIDEO_ID` with a browser User-Agent and
+extract `INNERTUBE_API_KEY` from the embedded `ytcfg.set({...})` JavaScript:
+
+```
+"INNERTUBE_API_KEY":"AIzaSy..."
+```
+
+This key is passed as a `?key=` query parameter to the innertube endpoint.
+As a fallback, `ytInitialPlayerResponse` embedded in the same page contains
+caption track URLs that can be used directly if the innertube call fails.
+
+### Step 2: Get Caption Track URLs via ANDROID Client
+
+**Endpoint:** `POST https://www.youtube.com/youtubei/v1/player?key=API_KEY&prettyPrint=false`
 
 **Request:**
 
@@ -69,16 +84,28 @@ including available caption tracks:
 {
   "context": {
     "client": {
-      "clientName": "WEB",
-      "clientVersion": "2.20240101.00.00"
+      "clientName": "ANDROID",
+      "clientVersion": "20.10.38",
+      "hl": "en",
+      "gl": "US"
     }
   },
   "videoId": "VIDEO_ID"
 }
 ```
 
-> **Note**: The `clientVersion` format is `YYYY.MM.DD.revision`. YouTube may
-> start requiring recent versions in the future, which would break this library.
+**Headers:**
+```
+User-Agent: com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip
+X-YouTube-Client-Name: 3
+X-YouTube-Client-Version: 20.10.38
+```
+
+> **Why ANDROID?** YouTube's WEB client (`clientName: "WEB"`) now enforces a
+> Proof of Origin Token (POT/BotGuard) for server-side requests. Obtaining a
+> POT requires executing YouTube's obfuscated JavaScript in a real browser
+> environment. The ANDROID client is not subject to this restriction, making
+> it the standard approach used by all working server-side transcript libraries.
 
 **Response (relevant part):**
 
@@ -107,9 +134,10 @@ including available caption tracks:
 - `kind: "asr"` indicates auto-generated captions
 - Manual captions have no `kind` field
 
-### Step 2: Fetch Caption Track
+### Step 3: Fetch Caption Track
 
-Using the `baseUrl` from step 1, we fetch the actual transcript in JSON format:
+Using the `baseUrl` from the ANDROID player response, we fetch the actual transcript in JSON format.
+ANDROID client URLs already include `&fmt=srv3`; we strip any existing `fmt` param before appending `&fmt=json3`.
 
 **Endpoint:** `GET {baseUrl}&fmt=json3`
 
@@ -146,60 +174,71 @@ We parse this into normalized segments (converting milliseconds to seconds):
 
 ## Curl Examples
 
-### Get Available Caption Tracks
+### Step 1: Extract INNERTUBE_API_KEY from watch page
 
 ```bash
-curl -X POST 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false' \
+API_KEY=$(curl -s 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' \
+  | grep -o '"INNERTUBE_API_KEY":"[^"]*"' | cut -d'"' -f4)
+echo "API key: $API_KEY"
+```
+
+### Step 2: Get Available Caption Tracks (ANDROID client)
+
+```bash
+curl -s -X POST \
+  "https://www.youtube.com/youtubei/v1/player?key=$API_KEY&prettyPrint=false" \
   -H 'Content-Type: application/json' \
-  -H 'User-Agent: Mozilla/5.0' \
+  -H 'User-Agent: com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip' \
+  -H 'X-YouTube-Client-Name: 3' \
+  -H 'X-YouTube-Client-Version: 20.10.38' \
   -d '{
     "context": {
       "client": {
-        "clientName": "WEB",
-        "clientVersion": "2.20240101.00.00"
+        "clientName": "ANDROID",
+        "clientVersion": "20.10.38",
+        "hl": "en",
+        "gl": "US"
       }
     },
     "videoId": "dQw4w9WgXcQ"
   }' | jq '.captions.playerCaptionsTracklistRenderer.captionTracks'
 ```
 
-### Fetch Transcript (using baseUrl from above)
+### Step 3: Fetch Transcript (strip existing fmt, add json3)
 
 ```bash
 # Replace CAPTION_BASE_URL with the baseUrl from the player response
-# User-Agent header is required
-curl -H 'User-Agent: Mozilla/5.0' \
-  "CAPTION_BASE_URL&fmt=json3" | jq '.events'
+# Strip &fmt=srv3 (present in ANDROID URLs) before adding &fmt=json3
+CAPTION_URL="CAPTION_BASE_URL"
+curl -s -H 'User-Agent: Mozilla/5.0' \
+  "${CAPTION_URL//&fmt=srv3/}&fmt=json3" | jq '.events'
 ```
 
-### One-liner with jq
+### Full one-liner
 
 ```bash
-# Get the first caption track URL and fetch transcript
 VIDEO_ID="dQw4w9WgXcQ"
 
-# Get caption URL (will be empty if no captions available)
-CAPTION_URL=$(curl -s -X POST \
-  'https://www.youtube.com/youtubei/v1/player?prettyPrint=false' \
-  -H 'Content-Type: application/json' \
+API_KEY=$(curl -s "https://www.youtube.com/watch?v=$VIDEO_ID" \
   -H 'User-Agent: Mozilla/5.0' \
-  -d "{
-    \"context\":{
-      \"client\":{
-        \"clientName\":\"WEB\",
-        \"clientVersion\":\"2.20240101.00.00\"
-      }
-    },
-    \"videoId\":\"$VIDEO_ID\"
-  }" \
+  | grep -o '"INNERTUBE_API_KEY":"[^"]*"' | cut -d'"' -f4)
+
+CAPTION_URL=$(curl -s -X POST \
+  "https://www.youtube.com/youtubei/v1/player?key=$API_KEY&prettyPrint=false" \
+  -H 'Content-Type: application/json' \
+  -H 'User-Agent: com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip' \
+  -H 'X-YouTube-Client-Name: 3' \
+  -H 'X-YouTube-Client-Version: 20.10.38' \
+  -d "{\"context\":{\"client\":{\"clientName\":\"ANDROID\",\"clientVersion\":\"20.10.38\"}},\"videoId\":\"$VIDEO_ID\"}" \
   | jq -r '.captions.playerCaptionsTracklistRenderer.captionTracks[0].baseUrl // empty')
 
-# Check if URL exists before fetching
 if [ -n "$CAPTION_URL" ]; then
-  curl -s -H 'User-Agent: Mozilla/5.0' "$CAPTION_URL&fmt=json3" \
+  curl -s -H 'User-Agent: Mozilla/5.0' \
+    "${CAPTION_URL//&fmt=srv3/}&fmt=json3" \
     | jq -r '.events[] | select(.segs) | [.segs[].utf8] | join("")'
 else
-  echo "No captions available for this video"
+  echo "No captions available"
 fi
 ```
 
@@ -348,12 +387,10 @@ All errors are thrown as standard JavaScript `Error` objects. Check the
 
 ## Technical Notes
 
-- **User-Agent**: Required for all requests. YouTube may reject requests
-  without a browser-like User-Agent header.
-- **Client Version**: The `clientVersion` doesn't need to be current today,
-  but YouTube could enforce version validation in the future.
-- **JSON3 Format**: The `fmt=json3` parameter returns structured JSON.
-  Without it, you get XML/TTML format.
+- **ANDROID client exempt from POT**: YouTube's WEB client now requires a Proof of Origin Token (BotGuard) for server-side calls. The ANDROID client (`clientName: "ANDROID"`) is not subject to this restriction — this is the approach used by all working server-side transcript libraries as of 2025.
+- **INNERTUBE_API_KEY**: Must be extracted from the watch page HTML (`ytcfg.set({...})`). Passed as `?key=` on the innertube endpoint. Fallback: `ytInitialPlayerResponse` embedded in the same page contains caption URLs but they may be IP-restricted.
+- **fmt=srv3 stripping**: ANDROID client timedtext URLs already contain `&fmt=srv3`. Always strip existing `fmt` params before appending `&fmt=json3`, otherwise the server uses the first param and returns XML.
+- **User-Agent**: Watch page requires a browser UA. Innertube call requires the ANDROID app UA (`com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip`).
+- **JSON3 Format**: The `fmt=json3` parameter returns structured JSON. Without it, you get XML/TTML format.
 - **Timeout**: Default 30 seconds per request, configurable via options.
-- **API Stability**: This is an undocumented API. Expect breaking changes.
-  Check for library updates if the tool stops working.
+- **API Stability**: This is an undocumented API. Expect breaking changes. Check for library updates if the tool stops working.

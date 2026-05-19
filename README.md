@@ -3,6 +3,8 @@
 [![npm version](https://img.shields.io/npm/v/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
 [![npm downloads](https://img.shields.io/npm/dm/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
 [![CI](https://github.com/nadimtuhin/ytranscript/actions/workflows/ci.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/nadimtuhin/ytranscript/actions/workflows/codeql.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/codeql.yml)
+[![Trivy](https://github.com/nadimtuhin/ytranscript/actions/workflows/trivy.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/trivy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Extract transcripts from your entire YouTube watch history in minutes. Build AI-powered video summaries, searchable archives, or feed transcripts directly to Claude, Cursor, and other AI assistants via the built-in MCP server.
