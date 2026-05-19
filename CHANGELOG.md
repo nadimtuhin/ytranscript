@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-20
+
+### Fixed
+- **Transcripts now work again (issue #4).** YouTube's WEB client innertube API now requires a Proof of Origin Token (POT/botguard) for server-side requests. The ANDROID client (`clientName: "ANDROID"`, `clientVersion: "20.10.38"`) is not subject to this restriction. Switched primary strategy to ANDROID client with the `INNERTUBE_API_KEY` extracted from the watch page HTML.
+- Fixed crash when YouTube returned an empty transcript body. Now shows a descriptive error.
+- Fixed duplicate `&fmt=` parameter bug: ANDROID client timedtext URLs already contain `&fmt=srv3`; appending `&fmt=json3` was silently ignored. Now strips existing `fmt` params before adding `fmt=json3`.
+- Fixed `ProxyAgent` import — removed private `undici/lib/dispatcher/proxy-agent` path in favour of the public named export.
+
+### Changed
+- Fetch flow: watch page HTML (to extract `INNERTUBE_API_KEY`) → ANDROID innertube `/player` call → signed timedtext URL fetch. Falls back to `ytInitialPlayerResponse` tracks embedded in the HTML if the innertube call fails.
+- ANDROID client user-agent: `com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip`.
+
 ## [1.2.5] - 2025-01-12
 
 ### Fixed
