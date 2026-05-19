@@ -16,8 +16,7 @@ import type { FetchOptions, ProxyConfig, Transcript, TranscriptSegment } from '.
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-const ANDROID_UA =
-  'com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip';
+const ANDROID_UA = 'com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip';
 
 const ANDROID_CLIENT_VERSION = '20.10.38';
 
@@ -103,7 +102,7 @@ function extractTracksFromHTML(html: string): CaptionTrack[] | null {
   const match = html.match(/var ytInitialPlayerResponse\s*=\s*(\{)/);
   if (!match) return null;
 
-  const start = match.index! + match[0].length - 1;
+  const start = (match.index ?? 0) + match[0].length - 1;
   let depth = 0;
   let end = start;
 
@@ -208,7 +207,7 @@ async function fetchCaptionTracks(
     if (!pageResp.ok) {
       throw new Error(
         'No captions available for this video. ' +
-        'The video may not have captions, may be private, or may be age-restricted.'
+          'The video may not have captions, may be private, or may be age-restricted.'
       );
     }
 
@@ -227,7 +226,7 @@ async function fetchCaptionTracks(
 
     throw new Error(
       'No captions available for this video. ' +
-      'The video may not have captions, may be private, or may be age-restricted.'
+        'The video may not have captions, may be private, or may be age-restricted.'
     );
   } finally {
     clearTimeout(timeoutId);
@@ -267,11 +266,13 @@ async function fetchCaptionTrack(
     if (!body) {
       throw new Error(
         'YouTube returned an empty transcript response. ' +
-        'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.'
+          'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.'
       );
     }
 
-    let data: { events?: Array<{ segs?: Array<{ utf8?: string }>; tStartMs?: number; dDurationMs?: number }> };
+    let data: {
+      events?: Array<{ segs?: Array<{ utf8?: string }>; tStartMs?: number; dDurationMs?: number }>;
+    };
     try {
       data = JSON.parse(body);
     } catch {
@@ -281,7 +282,7 @@ async function fetchCaptionTrack(
     if (!data || typeof data !== 'object') {
       throw new Error(
         'YouTube returned an empty transcript response. ' +
-        'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.'
+          'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.'
       );
     }
 
