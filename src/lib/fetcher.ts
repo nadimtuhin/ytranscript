@@ -103,10 +103,27 @@ function createProxyAgent(proxy?: ProxyConfig): Dispatcher | undefined {
 }
 
 /**
+ * Run an async operation with a timeout signal. Centralizes the
+ * AbortController + setTimeout + clearTimeout dance used by every fetch.
+ */
+async function withTimeout<T>(
+  timeoutMs: number,
+  operation: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await operation(controller.signal);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * Extract INNERTUBE_API_KEY from the YouTube watch page HTML.
  * This key is required for the innertube API endpoint.
  */
-function extractApiKey(html: string): string | null {
+export function extractApiKey(html: string): string | null {
   const match = html.match(/"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"/);
   return match ? match[1] : null;
 }
@@ -115,7 +132,7 @@ function extractApiKey(html: string): string | null {
  * Extract captionTracks from ytInitialPlayerResponse embedded in the HTML page.
  * Used as a fallback when the innertube API call fails.
  */
-function extractTracksFromHTML(html: string): CaptionTrack[] | null {
+export function extractTracksFromHTML(html: string): CaptionTrack[] | null {
   const match = html.match(/var ytInitialPlayerResponse\s*=\s*(\{)/);
   if (!match) return null;
 
@@ -144,180 +161,37 @@ function extractTracksFromHTML(html: string): CaptionTrack[] | null {
 }
 
 /**
- * Fetch caption tracks using the ANDROID innertube client.
- * ANDROID client timedtext URLs work server-side without a PO token,
- * unlike WEB client URLs which may require botguard/PO token (&exp=xpe).
+ * Parse a timedtext json3 response into transcript segments.
+ * Pure function — given the parsed JSON, returns segments.
  */
-async function fetchTracksViaAndroid(
-  videoId: string,
-  apiKey: string,
-  timeout: number,
-  dispatcher: Dispatcher | undefined
-): Promise<CaptionTrack[] | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+export function parseTimedTextEvents(data: TimedTextResponse): TranscriptSegment[] {
+  const segments: TranscriptSegment[] = [];
 
-  try {
-    const response = await fetch(
-      `https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': ANDROID_UA,
-          'X-YouTube-Client-Name': '3',
-          'X-YouTube-Client-Version': ANDROID_CLIENT_VERSION,
-        },
-        body: JSON.stringify({
-          context: {
-            client: {
-              clientName: 'ANDROID',
-              clientVersion: ANDROID_CLIENT_VERSION,
-              hl: 'en',
-              gl: 'US',
-            },
-          },
-          videoId,
-        }),
-        signal: controller.signal,
-        ...(dispatcher && { dispatcher }),
-      }
-    );
+  for (const event of data.events ?? []) {
+    if (!event.segs) continue;
 
-    if (!response.ok) return null;
+    const text = event.segs
+      .map((seg) => seg.utf8 ?? '')
+      .join('')
+      .trim();
 
-    const data = (await response.json()) as PlayerResponse;
-    const tracks = data.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-    return tracks?.length ? tracks : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+    if (!text) continue;
 
-/**
- * Fetch caption tracks: fetch the watch page to get the API key,
- * then use the ANDROID innertube client to get working timedtext URLs.
- * Falls back to the HTML-embedded captionTracks.
- */
-async function fetchCaptionTracks(
-  videoId: string,
-  timeout: number,
-  proxy?: ProxyConfig
-): Promise<CaptionTrack[]> {
-  const dispatcher = createProxyAgent(proxy);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const pageResp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: {
-        'User-Agent': BROWSER_UA,
-        'Accept-Language': 'en-US,en;q=0.9',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      signal: controller.signal,
-      ...(dispatcher && { dispatcher }),
+    segments.push({
+      text,
+      start: (event.tStartMs ?? 0) / 1000,
+      duration: (event.dDurationMs ?? 0) / 1000,
     });
-
-    if (!pageResp.ok) {
-      throw new Error(NO_CAPTIONS_ERROR);
-    }
-
-    const html = await pageResp.text();
-    const apiKey = extractApiKey(html);
-
-    // Primary: ANDROID innertube call — returns server-usable signed URLs
-    if (apiKey) {
-      const tracks = await fetchTracksViaAndroid(videoId, apiKey, timeout, dispatcher);
-      if (tracks) return tracks;
-    }
-
-    // Fallback: HTML-embedded captionTracks (may have IP/region restrictions on timedtext fetch)
-    const htmlTracks = extractTracksFromHTML(html);
-    if (htmlTracks) return htmlTracks;
-
-    throw new Error(NO_CAPTIONS_ERROR);
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  return segments;
 }
 
 /**
- * Fetch and parse a caption track
+ * Select the best caption track based on language preferences.
+ * Pure function — returns null when no track is suitable.
  */
-async function fetchCaptionTrack(
-  url: string,
-  timeout: number,
-  proxy?: ProxyConfig
-): Promise<TranscriptSegment[]> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  const dispatcher = createProxyAgent(proxy);
-
-  try {
-    // Strip any existing fmt parameter before adding our own (ANDROID URLs include &fmt=srv3)
-    const jsonUrl = `${url.replace(/&fmt=[^&]*/g, '')}&fmt=json3`;
-    const response = await fetch(jsonUrl, {
-      headers: {
-        'User-Agent': BROWSER_UA,
-        Referer: 'https://www.youtube.com/',
-      },
-      signal: controller.signal,
-      ...(dispatcher && { dispatcher }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const body = await response.text();
-
-    if (!body) {
-      throw new Error(EMPTY_TRANSCRIPT_ERROR);
-    }
-
-    let data: TimedTextResponse;
-    try {
-      data = JSON.parse(body) as TimedTextResponse;
-    } catch {
-      throw new Error('Failed to parse transcript data (unexpected format from YouTube)');
-    }
-
-    if (!data || typeof data !== 'object') {
-      throw new Error(EMPTY_TRANSCRIPT_ERROR);
-    }
-
-    const segments: TranscriptSegment[] = [];
-
-    for (const event of data.events ?? []) {
-      if (!event.segs) continue;
-
-      const text = event.segs
-        .map((seg) => seg.utf8 ?? '')
-        .join('')
-        .trim();
-
-      if (!text) continue;
-
-      segments.push({
-        text,
-        start: (event.tStartMs ?? 0) / 1000,
-        duration: (event.dDurationMs ?? 0) / 1000,
-      });
-    }
-
-    return segments;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
- * Select the best caption track based on preferences
- */
-function selectCaptionTrack(
+export function selectCaptionTrack(
   tracks: CaptionTrack[],
   preferredLanguages: string[],
   includeAutoGenerated: boolean
@@ -337,6 +211,144 @@ function selectCaptionTrack(
   }
 
   return searchOrder[0] || null;
+}
+
+/**
+ * Fetch caption tracks using the ANDROID innertube client.
+ * ANDROID client timedtext URLs work server-side without a PO token,
+ * unlike WEB client URLs which may require botguard/PO token (&exp=xpe).
+ */
+async function fetchTracksViaAndroid(
+  videoId: string,
+  apiKey: string,
+  timeout: number,
+  dispatcher: Dispatcher | undefined
+): Promise<CaptionTrack[] | null> {
+  try {
+    const response = await withTimeout(timeout, (signal) =>
+      fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': ANDROID_UA,
+          'X-YouTube-Client-Name': '3',
+          'X-YouTube-Client-Version': ANDROID_CLIENT_VERSION,
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'ANDROID',
+              clientVersion: ANDROID_CLIENT_VERSION,
+              hl: 'en',
+              gl: 'US',
+            },
+          },
+          videoId,
+        }),
+        signal,
+        ...(dispatcher && { dispatcher }),
+      })
+    );
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as PlayerResponse;
+    const tracks = data.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    return tracks?.length ? tracks : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch caption tracks: fetch the watch page to get the API key,
+ * then use the ANDROID innertube client to get working timedtext URLs.
+ * Falls back to the HTML-embedded captionTracks.
+ */
+async function fetchCaptionTracks(
+  videoId: string,
+  timeout: number,
+  proxy?: ProxyConfig
+): Promise<CaptionTrack[]> {
+  const dispatcher = createProxyAgent(proxy);
+
+  const pageResp = await withTimeout(timeout, (signal) =>
+    fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': BROWSER_UA,
+        'Accept-Language': 'en-US,en;q=0.9',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal,
+      ...(dispatcher && { dispatcher }),
+    })
+  );
+
+  if (!pageResp.ok) {
+    throw new Error(NO_CAPTIONS_ERROR);
+  }
+
+  const html = await pageResp.text();
+  const apiKey = extractApiKey(html);
+
+  // Primary: ANDROID innertube call — returns server-usable signed URLs
+  if (apiKey) {
+    const tracks = await fetchTracksViaAndroid(videoId, apiKey, timeout, dispatcher);
+    if (tracks) return tracks;
+  }
+
+  // Fallback: HTML-embedded captionTracks (may have IP/region restrictions on timedtext fetch)
+  const htmlTracks = extractTracksFromHTML(html);
+  if (htmlTracks) return htmlTracks;
+
+  throw new Error(NO_CAPTIONS_ERROR);
+}
+
+/**
+ * Fetch and parse a caption track
+ */
+async function fetchCaptionTrack(
+  url: string,
+  timeout: number,
+  proxy?: ProxyConfig
+): Promise<TranscriptSegment[]> {
+  const dispatcher = createProxyAgent(proxy);
+  // Strip any existing fmt parameter before adding our own (ANDROID URLs include &fmt=srv3)
+  const jsonUrl = `${url.replace(/&fmt=[^&]*/g, '')}&fmt=json3`;
+
+  const response = await withTimeout(timeout, (signal) =>
+    fetch(jsonUrl, {
+      headers: {
+        'User-Agent': BROWSER_UA,
+        Referer: 'https://www.youtube.com/',
+      },
+      signal,
+      ...(dispatcher && { dispatcher }),
+    })
+  );
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const body = await response.text();
+
+  if (!body) {
+    throw new Error(EMPTY_TRANSCRIPT_ERROR);
+  }
+
+  let data: TimedTextResponse;
+  try {
+    data = JSON.parse(body) as TimedTextResponse;
+  } catch {
+    throw new Error('Failed to parse transcript data (unexpected format from YouTube)');
+  }
+
+  if (!data || typeof data !== 'object') {
+    throw new Error(EMPTY_TRANSCRIPT_ERROR);
+  }
+
+  return parseTimedTextEvents(data);
 }
 
 /**

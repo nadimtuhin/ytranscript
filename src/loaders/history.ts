@@ -14,9 +14,11 @@ interface TakeoutHistoryItem {
 }
 
 /**
- * Extract video ID from YouTube URL
+ * Extract video ID from a YouTube URL.
+ * Loose: returns whatever `?v=` or the path segment contains (no 11-char regex
+ * check). Pure function.
  */
-function extractVideoIdFromUrl(url: string): string | null {
+export function extractVideoIdFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     if (parsed.hostname.includes('youtube.com')) {

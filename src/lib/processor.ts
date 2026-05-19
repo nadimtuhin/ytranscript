@@ -4,12 +4,55 @@
  */
 
 import pLimit from 'p-limit';
-import type { BulkOptions, TranscriptResult, WatchHistoryMeta } from '../types';
+import type { BulkOptions, FetchOptions, TranscriptResult, WatchHistoryMeta } from '../types';
 import { fetchTranscript } from './fetcher';
 
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_PAUSE_AFTER = 10;
 const DEFAULT_PAUSE_DURATION = 5000;
+
+/**
+ * Split an array into fixed-size chunks. Pure function.
+ */
+export function chunk<T>(items: T[], size: number): T[][] {
+  if (size <= 0) return [items];
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    batches.push(items.slice(i, i + size));
+  }
+  return batches;
+}
+
+/**
+ * Filter videos that have not already been processed. Pure function.
+ */
+export function selectUnprocessed(
+  videos: WatchHistoryMeta[],
+  skipIds: Set<string>
+): WatchHistoryMeta[] {
+  if (!skipIds.size) return videos;
+  return videos.filter((v) => !skipIds.has(v.videoId));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch a single transcript and wrap failures into a TranscriptResult.
+ */
+async function fetchResult(
+  meta: WatchHistoryMeta,
+  fetchOptions: FetchOptions
+): Promise<TranscriptResult> {
+  try {
+    const transcript = await fetchTranscript(meta.videoId, fetchOptions);
+    return { meta, transcript };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { meta, transcript: null, error: message };
+  }
+}
 
 /**
  * Process multiple videos in bulk with concurrency control
@@ -27,51 +70,31 @@ export async function processVideos(
     ...fetchOptions
   } = options;
 
-  // Filter out already-processed videos
-  const toProcess = videos.filter((v) => !skipIds.has(v.videoId));
-
-  if (!toProcess.length) {
-    return [];
-  }
+  const toProcess = selectUnprocessed(videos, skipIds);
+  if (!toProcess.length) return [];
 
   const limit = pLimit(concurrency);
   const results: TranscriptResult[] = [];
   let completed = 0;
 
-  const processOne = async (meta: WatchHistoryMeta): Promise<TranscriptResult> => {
-    try {
-      const transcript = await fetchTranscript(meta.videoId, fetchOptions);
-      return { meta, transcript };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return { meta, transcript: null, error: message };
-    }
-  };
+  const batches = chunk(toProcess, pauseAfter);
 
-  // Process in batches for rate limiting
-  const batches: WatchHistoryMeta[][] = [];
-  for (let i = 0; i < toProcess.length; i += pauseAfter) {
-    batches.push(toProcess.slice(i, i + pauseAfter));
-  }
-
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-
-    const batchPromises = batch.map((meta) =>
-      limit(async () => {
-        const result = await processOne(meta);
-        completed++;
-        onProgress?.(completed, toProcess.length, result);
-        return result;
-      })
+  for (let i = 0; i < batches.length; i++) {
+    const batchResults = await Promise.all(
+      batches[i].map((meta) =>
+        limit(async () => {
+          const result = await fetchResult(meta, fetchOptions);
+          completed++;
+          onProgress?.(completed, toProcess.length, result);
+          return result;
+        })
+      )
     );
-
-    const batchResults = await Promise.all(batchPromises);
     results.push(...batchResults);
 
     // Pause between batches (except after the last one)
-    if (batchIndex < batches.length - 1 && pauseDuration > 0) {
-      await new Promise((resolve) => setTimeout(resolve, pauseDuration));
+    if (i < batches.length - 1 && pauseDuration > 0) {
+      await sleep(pauseDuration);
     }
   }
 
@@ -93,35 +116,21 @@ export async function* streamVideos(
     ...fetchOptions
   } = options;
 
-  const toProcess = videos.filter((v) => !skipIds.has(v.videoId));
-
-  if (!toProcess.length) {
-    return;
-  }
+  const toProcess = selectUnprocessed(videos, skipIds);
+  if (!toProcess.length) return;
 
   const limit = pLimit(concurrency);
   let processedInBatch = 0;
 
   for (const meta of toProcess) {
-    const result = await limit(async () => {
-      try {
-        const transcript = await fetchTranscript(meta.videoId, fetchOptions);
-        return { meta, transcript } as TranscriptResult;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return { meta, transcript: null, error: message } as TranscriptResult;
-      }
-    });
-
+    const result = await limit(() => fetchResult(meta, fetchOptions));
     yield result;
     processedInBatch++;
 
     // Rate limiting
     if (processedInBatch >= pauseAfter) {
       processedInBatch = 0;
-      if (pauseDuration > 0) {
-        await new Promise((resolve) => setTimeout(resolve, pauseDuration));
-      }
+      if (pauseDuration > 0) await sleep(pauseDuration);
     }
   }
 }

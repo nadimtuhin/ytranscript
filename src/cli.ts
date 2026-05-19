@@ -6,20 +6,17 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { program } from 'commander';
 import { version } from '../package.json';
+import { formatTranscriptForCli, validateProxyUrl } from './cli-helpers';
 import {
   appendJsonl,
   extractVideoId,
   fetchTranscript,
   fetchVideoInfo,
-  formatSrt,
-  formatText,
-  formatVtt,
   fromVideoIds,
   loadProcessedIds,
   loadWatchHistory,
   loadWatchLater,
   mergeVideoSources,
-  processVideos,
   streamVideos,
   writeCsv,
 } from './index';
@@ -32,19 +29,7 @@ const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
 /**
- * Validate proxy URL format
- */
-function validateProxyUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return ['http:', 'https:', 'socks4:', 'socks5:'].includes(parsed.protocol);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Parse and validate proxy option
+ * Parse and validate proxy option (exits on invalid URL).
  */
 function parseProxy(proxyUrl: string | undefined): ProxyConfig | undefined {
   if (!proxyUrl) return undefined;
@@ -54,6 +39,25 @@ function parseProxy(proxyUrl: string | undefined): ProxyConfig | undefined {
     process.exit(1);
   }
   return { url: proxyUrl };
+}
+
+/**
+ * Try loading a source, logging failures but never throwing.
+ */
+async function tryLoadSource(
+  label: string,
+  path: string,
+  load: (p: string) => Promise<WatchHistoryMeta[]>
+): Promise<WatchHistoryMeta[] | null> {
+  console.log(dim(`Loading ${label} from ${path}...`));
+  try {
+    const items = await load(path);
+    console.log(`  Found ${items.length} videos in ${label}`);
+    return items;
+  } catch (error) {
+    console.error(red(`Failed to load ${label}: ${error}`));
+    return null;
+  }
 }
 
 program
@@ -85,21 +89,7 @@ program
         proxy,
       });
 
-      let output: string;
-
-      switch (options.format) {
-        case 'json':
-          output = JSON.stringify(transcript, null, 2);
-          break;
-        case 'srt':
-          output = formatSrt(transcript);
-          break;
-        case 'vtt':
-          output = formatVtt(transcript);
-          break;
-        default:
-          output = formatText(transcript, options.timestamps);
-      }
+      const output = formatTranscriptForCli(transcript, options.format, !!options.timestamps);
 
       if (options.output) {
         await writeFile(options.output, output, 'utf-8');
@@ -132,38 +122,22 @@ program
   .action(async (options) => {
     const sources: WatchHistoryMeta[][] = [];
 
-    // Load from Google Takeout history
     if (options.history) {
-      console.log(dim(`Loading watch history from ${options.history}...`));
-      try {
-        const history = await loadWatchHistory(options.history);
-        sources.push(history);
-        console.log(`  Found ${history.length} videos in history`);
-      } catch (error) {
-        console.error(red(`Failed to load history: ${error}`));
-      }
+      const items = await tryLoadSource('watch history', options.history, loadWatchHistory);
+      if (items) sources.push(items);
     }
 
-    // Load from Google Takeout watch-later
     if (options.watchLater) {
-      console.log(dim(`Loading watch-later from ${options.watchLater}...`));
-      try {
-        const watchLater = await loadWatchLater(options.watchLater);
-        sources.push(watchLater);
-        console.log(`  Found ${watchLater.length} videos in watch-later`);
-      } catch (error) {
-        console.error(red(`Failed to load watch-later: ${error}`));
-      }
+      const items = await tryLoadSource('watch-later', options.watchLater, loadWatchLater);
+      if (items) sources.push(items);
     }
 
-    // Load from comma-separated list
     if (options.videos) {
       const ids = options.videos.split(',').map((s: string) => s.trim());
       sources.push(fromVideoIds(ids));
       console.log(`  Added ${ids.length} videos from --videos`);
     }
 
-    // Load from file
     if (options.file) {
       try {
         const content = await readFile(options.file, 'utf-8');
@@ -232,13 +206,11 @@ program
       // Append to JSONL immediately
       await appendJsonl(result, options.outJsonl);
 
-      // Collect for CSV
       if (options.outCsv) {
         csvResults.push(result);
       }
     }
 
-    // Write CSV at the end
     if (options.outCsv && csvResults.length) {
       await writeCsv(csvResults, { path: options.outCsv, append: options.resume });
       console.log(dim(`\nCSV written to ${options.outCsv}`));
@@ -263,7 +235,6 @@ program
     const proxy = parseProxy(options.proxy);
 
     try {
-      // Fetch available tracks using the library function (which supports proxy)
       const tracks = await fetchVideoInfo(videoId, { proxy });
 
       if (!tracks.length) {
