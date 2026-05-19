@@ -20,6 +20,18 @@ const ANDROID_UA = 'com.google.android.youtube/20.10.38 (Linux; U; Android 14) g
 
 const ANDROID_CLIENT_VERSION = '20.10.38';
 
+const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
+
+const NO_CAPTIONS_ERROR =
+  'No captions available for this video. ' +
+  'The video may not have captions, may be private, or may be age-restricted.';
+
+const EMPTY_TRANSCRIPT_ERROR =
+  'YouTube returned an empty transcript response. ' +
+  'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.';
+
+const PROXY_ENV_VARS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy'] as const;
+
 export interface CaptionTrack {
   baseUrl: string;
   languageCode: string;
@@ -35,11 +47,21 @@ interface PlayerResponse {
   };
 }
 
+interface TimedTextEvent {
+  segs?: Array<{ utf8?: string }>;
+  tStartMs?: number;
+  dDurationMs?: number;
+}
+
+interface TimedTextResponse {
+  events?: TimedTextEvent[];
+}
+
 /**
  * Extract video ID from various YouTube URL formats
  */
 export function extractVideoId(input: string): string | null {
-  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
+  if (VIDEO_ID_RE.test(input)) {
     return input;
   }
 
@@ -48,17 +70,17 @@ export function extractVideoId(input: string): string | null {
 
     if (url.hostname.includes('youtube.com')) {
       const v = url.searchParams.get('v');
-      if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+      if (v && VIDEO_ID_RE.test(v)) return v;
     }
 
     if (url.hostname === 'youtu.be') {
       const id = url.pathname.slice(1).split('/')[0];
-      if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+      if (VIDEO_ID_RE.test(id)) return id;
     }
 
     if (url.pathname.startsWith('/embed/')) {
       const id = url.pathname.split('/')[2];
-      if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+      if (VIDEO_ID_RE.test(id)) return id;
     }
   } catch {
     // Not a valid URL
@@ -72,14 +94,9 @@ function createProxyAgent(proxy?: ProxyConfig): Dispatcher | undefined {
     return new ProxyAgent(proxy.url);
   }
 
-  const envProxy =
-    process.env.HTTP_PROXY ||
-    process.env.http_proxy ||
-    process.env.HTTPS_PROXY ||
-    process.env.https_proxy;
-
-  if (envProxy) {
-    return new ProxyAgent(envProxy);
+  for (const name of PROXY_ENV_VARS) {
+    const value = process.env[name];
+    if (value) return new ProxyAgent(value);
   }
 
   return undefined;
@@ -205,10 +222,7 @@ async function fetchCaptionTracks(
     });
 
     if (!pageResp.ok) {
-      throw new Error(
-        'No captions available for this video. ' +
-          'The video may not have captions, may be private, or may be age-restricted.'
-      );
+      throw new Error(NO_CAPTIONS_ERROR);
     }
 
     const html = await pageResp.text();
@@ -224,10 +238,7 @@ async function fetchCaptionTracks(
     const htmlTracks = extractTracksFromHTML(html);
     if (htmlTracks) return htmlTracks;
 
-    throw new Error(
-      'No captions available for this video. ' +
-        'The video may not have captions, may be private, or may be age-restricted.'
-    );
+    throw new Error(NO_CAPTIONS_ERROR);
   } finally {
     clearTimeout(timeoutId);
   }
@@ -264,36 +275,27 @@ async function fetchCaptionTrack(
     const body = await response.text();
 
     if (!body) {
-      throw new Error(
-        'YouTube returned an empty transcript response. ' +
-          'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.'
-      );
+      throw new Error(EMPTY_TRANSCRIPT_ERROR);
     }
 
-    let data: {
-      events?: Array<{ segs?: Array<{ utf8?: string }>; tStartMs?: number; dDurationMs?: number }>;
-    };
+    let data: TimedTextResponse;
     try {
-      data = JSON.parse(body);
+      data = JSON.parse(body) as TimedTextResponse;
     } catch {
       throw new Error('Failed to parse transcript data (unexpected format from YouTube)');
     }
 
     if (!data || typeof data !== 'object') {
-      throw new Error(
-        'YouTube returned an empty transcript response. ' +
-          'Your IP may be rate-limited. Try again later or use --proxy / HTTP_PROXY.'
-      );
+      throw new Error(EMPTY_TRANSCRIPT_ERROR);
     }
 
-    const events = data.events || [];
     const segments: TranscriptSegment[] = [];
 
-    for (const event of events) {
+    for (const event of data.events ?? []) {
       if (!event.segs) continue;
 
       const text = event.segs
-        .map((seg: { utf8?: string }) => seg.utf8 || '')
+        .map((seg) => seg.utf8 ?? '')
         .join('')
         .trim();
 
@@ -301,8 +303,8 @@ async function fetchCaptionTrack(
 
       segments.push({
         text,
-        start: (event.tStartMs || 0) / 1000,
-        duration: (event.dDurationMs || 0) / 1000,
+        start: (event.tStartMs ?? 0) / 1000,
+        duration: (event.dDurationMs ?? 0) / 1000,
       });
     }
 
