@@ -246,7 +246,7 @@ async function fetchTracksViaAndroid(
           videoId,
         }),
         signal,
-        ...(dispatcher && { dispatcher }),
+        ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
       })
     );
 
@@ -280,7 +280,7 @@ async function fetchCaptionTracks(
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
       signal,
-      ...(dispatcher && { dispatcher }),
+      ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
     })
   );
 
@@ -323,7 +323,7 @@ async function fetchCaptionTrack(
         Referer: 'https://www.youtube.com/',
       },
       signal,
-      ...(dispatcher && { dispatcher }),
+      ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
     })
   );
 

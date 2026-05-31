@@ -54,10 +54,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.2",
-    "commander": "^12.1.0",
+    "commander": "^14.0.3",
     "linkedom": "^0.18.0",
-    "p-limit": "^6.1.0",
-    "undici": "^7.18.2",
+    "p-limit": "^7.3.0",
+    "undici": "^8.0.2",
     "zod": "^4.3.5"
   },
   "engines": {
