@@ -2,7 +2,7 @@
  * Cross-runtime file utilities (works with Node.js and Bun)
  */
 
-import { constants, access, appendFile, readFile, writeFile } from 'node:fs/promises';
+import { access, appendFile, constants, readFile, writeFile } from 'node:fs/promises';
 
 /**
  * Check if a file exists

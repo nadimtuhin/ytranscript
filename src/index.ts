@@ -24,39 +24,39 @@
  */
 
 // Core fetcher
-export { fetchTranscript, extractVideoId, fetchVideoInfo } from './lib/fetcher';
+export { extractVideoId, fetchTranscript, fetchVideoInfo } from './lib/fetcher';
 
 // Bulk processor
 export { processVideos, streamVideos } from './lib/processor';
 
 // Loaders
 export {
+  fromVideoIds,
+  loadProcessedIds,
   loadWatchHistory,
   loadWatchLater,
-  fromVideoIds,
   mergeVideoSources,
-  loadProcessedIds,
 } from './loaders';
 
 // Output formatters
 export {
-  writeJsonl,
   appendJsonl,
-  writeCsv,
   formatSrt,
-  formatVtt,
   formatText,
+  formatVtt,
+  writeCsv,
+  writeJsonl,
 } from './outputs';
 
 // Types
 export type {
-  ProxyConfig,
-  Transcript,
-  TranscriptSegment,
-  TranscriptResult,
-  WatchHistoryMeta,
-  FetchOptions,
   BulkOptions,
+  FetchOptions,
   OutputFormat,
   OutputOptions,
+  ProxyConfig,
+  Transcript,
+  TranscriptResult,
+  TranscriptSegment,
+  WatchHistoryMeta,
 } from './types';
