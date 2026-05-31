@@ -117,7 +117,7 @@ async function fetchPlayerResponse(
         videoId,
       }),
       signal: controller.signal,
-      ...(dispatcher && { dispatcher }),
+      ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
     });
 
     if (!response.ok) {
@@ -148,7 +148,7 @@ async function fetchCaptionTrack(
     const response = await fetch(jsonUrl, {
       headers: { 'User-Agent': USER_AGENT },
       signal: controller.signal,
-      ...(dispatcher && { dispatcher }),
+      ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
     });
 
     if (!response.ok) {
