@@ -9,8 +9,8 @@
  * 3. Fetch the signed timedtext URL from the innertube response
  */
 
-import { ProxyAgent } from 'undici';
 import type { Dispatcher } from 'undici';
+import { ProxyAgent } from 'undici';
 import type { FetchOptions, ProxyConfig, Transcript, TranscriptSegment } from '../types';
 
 const BROWSER_UA =
