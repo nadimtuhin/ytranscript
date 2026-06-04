@@ -9,7 +9,7 @@
  * 3. Fetch the signed timedtext URL from the innertube response
  */
 
-import { ProxyAgent } from 'undici';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { Dispatcher } from 'undici';
 import type { FetchOptions, ProxyConfig, Transcript, TranscriptSegment } from '../types';
 
@@ -272,8 +272,9 @@ async function fetchCaptionTracks(
 ): Promise<CaptionTrack[]> {
   const dispatcher = createProxyAgent(proxy);
 
+  const _fetch2 = dispatcher ? undiciFetch : fetch;
   const pageResp = await withTimeout(timeout, (signal) =>
-    fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    (_fetch2 as typeof fetch)(`https://www.youtube.com/watch?v=${videoId}`, {
       headers: {
         'User-Agent': BROWSER_UA,
         'Accept-Language': 'en-US,en;q=0.9',
@@ -281,7 +282,7 @@ async function fetchCaptionTracks(
       },
       signal,
       ...(dispatcher && { dispatcher }),
-    })
+    } as RequestInit)
   );
 
   if (!pageResp.ok) {
@@ -316,15 +317,16 @@ async function fetchCaptionTrack(
   // Strip any existing fmt parameter before adding our own (ANDROID URLs include &fmt=srv3)
   const jsonUrl = `${url.replace(/&fmt=[^&]*/g, '')}&fmt=json3`;
 
+  const _fetch3 = dispatcher ? undiciFetch : fetch;
   const response = await withTimeout(timeout, (signal) =>
-    fetch(jsonUrl, {
+    (_fetch3 as typeof fetch)(jsonUrl, {
       headers: {
         'User-Agent': BROWSER_UA,
         Referer: 'https://www.youtube.com/',
       },
       signal,
       ...(dispatcher && { dispatcher }),
-    })
+    } as RequestInit)
   );
 
   if (!response.ok) {
