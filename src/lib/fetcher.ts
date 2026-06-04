@@ -246,8 +246,8 @@ async function fetchTracksViaAndroid(
           videoId,
         }),
         signal,
-        ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
-      })
+        ...(dispatcher ? { dispatcher } : {}),
+      } as RequestInit)
     );
 
     if (!response.ok) return null;
@@ -280,8 +280,8 @@ async function fetchCaptionTracks(
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
       signal,
-      ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
-    })
+      ...(dispatcher ? { dispatcher } : {}),
+    } as RequestInit)
   );
 
   if (!pageResp.ok) {
@@ -323,8 +323,8 @@ async function fetchCaptionTrack(
         Referer: 'https://www.youtube.com/',
       },
       signal,
-      ...(dispatcher && { dispatcher: dispatcher as unknown as Record<string, unknown> }),
-    })
+      ...(dispatcher ? { dispatcher } : {}),
+    } as RequestInit)
   );
 
   if (!response.ok) {
