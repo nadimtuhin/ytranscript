@@ -227,7 +227,7 @@ async function fetchTracksViaAndroid(
   try {
     const _fetch1 = dispatcher ? undiciFetch : fetch;
     const response = await withTimeout(timeout, (signal) =>
-      (_fetch1 as typeof fetch)(`https://www.youtube.com/youtubei/v1/player?key=***&prettyPrint=false`, {
+      (_fetch1 as typeof fetch)(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
