@@ -9,8 +9,8 @@
  * 3. Fetch the signed timedtext URL from the innertube response
  */
 
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { Dispatcher } from 'undici';
-import { ProxyAgent } from 'undici';
 import type { FetchOptions, ProxyConfig, Transcript, TranscriptSegment } from '../types';
 
 const BROWSER_UA =
@@ -225,8 +225,9 @@ async function fetchTracksViaAndroid(
   dispatcher: Dispatcher | undefined
 ): Promise<CaptionTrack[] | null> {
   try {
+    const _fetch1 = dispatcher ? undiciFetch : fetch;
     const response = await withTimeout(timeout, (signal) =>
-      fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`, {
+      (_fetch1 as typeof fetch)(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -246,7 +247,7 @@ async function fetchTracksViaAndroid(
           videoId,
         }),
         signal,
-        ...(dispatcher ? { dispatcher } : {}),
+        ...(dispatcher && { dispatcher }),
       } as RequestInit)
     );
 
@@ -272,15 +273,16 @@ async function fetchCaptionTracks(
 ): Promise<CaptionTrack[]> {
   const dispatcher = createProxyAgent(proxy);
 
+  const _fetch2 = dispatcher ? undiciFetch : fetch;
   const pageResp = await withTimeout(timeout, (signal) =>
-    fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    (_fetch2 as typeof fetch)(`https://www.youtube.com/watch?v=${videoId}`, {
       headers: {
         'User-Agent': BROWSER_UA,
         'Accept-Language': 'en-US,en;q=0.9',
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
       signal,
-      ...(dispatcher ? { dispatcher } : {}),
+      ...(dispatcher && { dispatcher }),
     } as RequestInit)
   );
 
@@ -316,14 +318,15 @@ async function fetchCaptionTrack(
   // Strip any existing fmt parameter before adding our own (ANDROID URLs include &fmt=srv3)
   const jsonUrl = `${url.replace(/&fmt=[^&]*/g, '')}&fmt=json3`;
 
+  const _fetch3 = dispatcher ? undiciFetch : fetch;
   const response = await withTimeout(timeout, (signal) =>
-    fetch(jsonUrl, {
+    (_fetch3 as typeof fetch)(jsonUrl, {
       headers: {
         'User-Agent': BROWSER_UA,
         Referer: 'https://www.youtube.com/',
       },
       signal,
-      ...(dispatcher ? { dispatcher } : {}),
+      ...(dispatcher && { dispatcher }),
     } as RequestInit)
   );
 
