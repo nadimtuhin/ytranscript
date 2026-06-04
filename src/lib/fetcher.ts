@@ -225,8 +225,9 @@ async function fetchTracksViaAndroid(
   dispatcher: Dispatcher | undefined
 ): Promise<CaptionTrack[] | null> {
   try {
+    const _fetch1 = dispatcher ? undiciFetch : fetch;
     const response = await withTimeout(timeout, (signal) =>
-      fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`, {
+      (_fetch1 as typeof fetch)(`https://www.youtube.com/youtubei/v1/player?key=***&prettyPrint=false`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +248,7 @@ async function fetchTracksViaAndroid(
         }),
         signal,
         ...(dispatcher && { dispatcher }),
-      })
+      } as RequestInit)
     );
 
     if (!response.ok) return null;
