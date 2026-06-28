@@ -7,3 +7,7 @@ transcripts.csv
 *.srt
 *.vtt
 .claude/
+node_modules
+.env
+dist
+build
