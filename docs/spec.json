@@ -1,0 +1,2 @@
+{ "banners": { "h-start": "GET STARTED", "h-ai": "USE IT WITH CLAUDE", "h-how": "HOW IT WORKS", "h-help": "NEED HELP", "h-dev": "FOR DEVELOPERS" },
+  "hero": { "kicker": "OPEN SOURCE · NPM · MCP", "title": "ytranscript", "tagline": "YouTube transcripts from one command. No API key." } }

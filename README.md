@@ -1,4 +1,102 @@
+<div align="center">
+
 # ytranscript
+
+![ytranscript: YouTube transcripts from one command, no API key](https://raw.githubusercontent.com/nadimtuhin/ytranscript/main/docs/images/hero.svg)
+
+**Videos are hard to search.** Their words are not. Pull the text out in one command.
+
+[`npm`](https://www.npmjs.com/package/@nadimtuhin/ytranscript) [`MIT`](LICENSE) `Node 18+ / Bun 1.0+` [`blog post`](https://nadimtuhin.com/blog/ytranscript-mcp-youtube-transcripts)
+
+</div>
+
+<br>
+
+You want what someone said in a YouTube video, as text. To read it, search it, or hand it to Claude. ytranscript gets the captions for you. No API key, no account.
+
+<br>
+
+![Get started](https://raw.githubusercontent.com/nadimtuhin/ytranscript/main/docs/images/h-start.svg)
+
+**1. Get a transcript:**
+
+```bash
+npx @nadimtuhin/ytranscript get dQw4w9WgXcQ
+```
+
+You will see the video text printed in your terminal. You can pass a full YouTube link instead of the ID.
+
+**2. See which languages exist:**
+
+```bash
+npx @nadimtuhin/ytranscript info dQw4w9WgXcQ
+```
+
+**3. Save it as subtitles:**
+
+```bash
+npx @nadimtuhin/ytranscript get dQw4w9WgXcQ --format srt -o video.srt
+```
+
+<br>
+
+![Use it with Claude](https://raw.githubusercontent.com/nadimtuhin/ytranscript/main/docs/images/h-ai.svg)
+
+ytranscript also runs as an MCP server, so Claude Desktop or Cursor can fetch transcripts for you. Add this to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ytranscript": {
+      "command": "npx",
+      "args": ["-y", "-p", "@nadimtuhin/ytranscript", "ytranscript-mcp"]
+    }
+  }
+}
+```
+
+Then ask: "Get the transcript for this YouTube video and summarize it." More detail is in [MCP Server](#mcp-server-ai-assistant-integration).
+
+<br>
+
+![How it works](https://raw.githubusercontent.com/nadimtuhin/ytranscript/main/docs/images/h-how.svg)
+
+**It asks YouTube the way the player does.** It calls YouTube's public innertube API and reads the caption track. That is why no key is needed.
+
+**It works only where captions exist.** Private, age-restricted and live videos fail. See [Limitations](#limitations).
+
+<br>
+
+![Need help](https://raw.githubusercontent.com/nadimtuhin/ytranscript/main/docs/images/h-help.svg)
+
+<details>
+<summary>I get HTTP 429</summary>
+
+YouTube is rate limiting you. On `bulk`, slow down with `--concurrency 2 --pause-after 10 --pause-ms 5000`. On `get` or `bulk`, add `--proxy <url>`. Or wait a few minutes. See [Rate Limiting](#rate-limiting).
+
+</details>
+
+<details>
+<summary>"No captions available for this video"</summary>
+
+The video has no captions. Run `npx @nadimtuhin/ytranscript info <id>` first to check. Other errors are listed in [Error Handling](#error-handling).
+
+</details>
+
+<details>
+<summary>Do I need to install it?</summary>
+
+No. `npx @nadimtuhin/ytranscript ...` runs it. For a permanent `ytranscript` command, run `npm install -g @nadimtuhin/ytranscript`.
+
+</details>
+
+<br>
+
+![For developers](https://raw.githubusercontent.com/nadimtuhin/ytranscript/main/docs/images/h-dev.svg)
+
+Everything below is reference. You don't need it to get started.
+
+[Why](#why-ytranscript) · [Install](#installation) · [MCP](#mcp-server-ai-assistant-integration) · [CLI](#cli-usage) · [API](#programmatic-api) · [Errors](#error-handling) · [Limitations](#limitations)
 
 [![npm version](https://img.shields.io/npm/v/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
 [![npm downloads](https://img.shields.io/npm/dm/@nadimtuhin/ytranscript.svg)](https://www.npmjs.com/package/@nadimtuhin/ytranscript)
@@ -6,10 +104,6 @@
 [![CodeQL](https://github.com/nadimtuhin/ytranscript/actions/workflows/codeql.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/codeql.yml)
 [![Trivy](https://github.com/nadimtuhin/ytranscript/actions/workflows/trivy.yml/badge.svg)](https://github.com/nadimtuhin/ytranscript/actions/workflows/trivy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-Extract transcripts from your entire YouTube watch history in minutes. Build AI-powered video summaries, searchable archives, or feed transcripts directly to Claude, Cursor, and other AI assistants via the built-in MCP server.
-
-**[Read the blog post: "Automating My Second Brain with YouTube Transcripts"](https://nadimtuhin.com/blog/ytranscript-mcp-youtube-transcripts)**
 
 ## Why ytranscript?
 
@@ -65,7 +159,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "ytranscript": {
       "command": "npx",
-      "args": ["-y", "@nadimtuhin/ytranscript", "mcp"]
+      "args": ["-y", "-p", "@nadimtuhin/ytranscript", "ytranscript-mcp"]
     }
   }
 }
