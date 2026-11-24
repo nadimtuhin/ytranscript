@@ -291,6 +291,12 @@ describe('extractVideoId edge cases', () => {
     expect(extractVideoId('abcdefghijkl')).toBeNull();
   });
 
+  test('rejects hosts that only contain youtube.com in their name', () => {
+    expect(extractVideoId('https://youtube.com.evil.net/watch?v=dQw4w9WgXcQ')).toBeNull();
+    expect(extractVideoId('https://notyoutube.com/shorts/dQw4w9WgXcQ')).toBeNull();
+    expect(extractVideoId('https://evil-youtube-nocookie.com/embed/dQw4w9WgXcQ')).toBeNull();
+  });
+
   test('rejects video ID with invalid characters', () => {
     expect(extractVideoId('abc!@#$%^&*()')).toBeNull();
   });

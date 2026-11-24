@@ -59,6 +59,12 @@ interface TimedTextResponse {
   events?: TimedTextEvent[];
 }
 
+const YOUTUBE_DOMAINS = ['youtube.com', 'youtube-nocookie.com'];
+
+function isYouTubeHost(hostname: string): boolean {
+  return YOUTUBE_DOMAINS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
+}
+
 /**
  * Extract video ID from various YouTube URL formats
  */
@@ -69,10 +75,7 @@ export function extractVideoId(input: string): string | null {
 
   try {
     const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(input) ? input : `https://${input}`);
-    const isYouTubeHost =
-      url.hostname.includes('youtube.com') || url.hostname.includes('youtube-nocookie.com');
-
-    if (isYouTubeHost) {
+    if (isYouTubeHost(url.hostname)) {
       const v = url.searchParams.get('v');
       if (v && VIDEO_ID_RE.test(v)) return v;
 
