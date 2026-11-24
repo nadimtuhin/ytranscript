@@ -22,6 +22,8 @@ const ANDROID_CLIENT_VERSION = '20.10.38';
 
 const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
+const VIDEO_PATH_PREFIXES = new Set(['embed', 'shorts', 'live', 'v']);
+
 const NO_CAPTIONS_ERROR =
   'No captions available for this video. ' +
   'The video may not have captions, may be private, or may be age-restricted.';
@@ -57,6 +59,12 @@ interface TimedTextResponse {
   events?: TimedTextEvent[];
 }
 
+const YOUTUBE_DOMAINS = ['youtube.com', 'youtube-nocookie.com'];
+
+function isYouTubeHost(hostname: string): boolean {
+  return YOUTUBE_DOMAINS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
+}
+
 /**
  * Extract video ID from various YouTube URL formats
  */
@@ -66,20 +74,17 @@ export function extractVideoId(input: string): string | null {
   }
 
   try {
-    const url = new URL(input);
-
-    if (url.hostname.includes('youtube.com')) {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(input) ? input : `https://${input}`);
+    if (isYouTubeHost(url.hostname)) {
       const v = url.searchParams.get('v');
       if (v && VIDEO_ID_RE.test(v)) return v;
+
+      const [, prefix, id] = url.pathname.split('/');
+      if (VIDEO_PATH_PREFIXES.has(prefix) && VIDEO_ID_RE.test(id ?? '')) return id;
     }
 
     if (url.hostname === 'youtu.be') {
       const id = url.pathname.slice(1).split('/')[0];
-      if (VIDEO_ID_RE.test(id)) return id;
-    }
-
-    if (url.pathname.startsWith('/embed/')) {
-      const id = url.pathname.split('/')[2];
       if (VIDEO_ID_RE.test(id)) return id;
     }
   } catch {
@@ -139,9 +144,14 @@ export function extractTracksFromHTML(html: string): CaptionTrack[] | null {
   const start = (match.index ?? 0) + match[0].length - 1;
   let depth = 0;
   let end = start;
+  let inString = false;
 
   for (let i = start; i < html.length; i++) {
-    if (html[i] === '{') depth++;
+    if (inString) {
+      if (html[i] === '\\') i++;
+      else if (html[i] === '"') inString = false;
+    } else if (html[i] === '"') inString = true;
+    else if (html[i] === '{') depth++;
     else if (html[i] === '}') {
       depth--;
       if (depth === 0) {
