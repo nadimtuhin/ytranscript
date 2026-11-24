@@ -22,6 +22,8 @@ const ANDROID_CLIENT_VERSION = '20.10.38';
 
 const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
+const VIDEO_PATH_PREFIXES = new Set(['embed', 'shorts', 'live', 'v']);
+
 const NO_CAPTIONS_ERROR =
   'No captions available for this video. ' +
   'The video may not have captions, may be private, or may be age-restricted.';
@@ -66,20 +68,20 @@ export function extractVideoId(input: string): string | null {
   }
 
   try {
-    const url = new URL(input);
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(input) ? input : `https://${input}`);
+    const isYouTubeHost =
+      url.hostname.includes('youtube.com') || url.hostname.includes('youtube-nocookie.com');
 
-    if (url.hostname.includes('youtube.com')) {
+    if (isYouTubeHost) {
       const v = url.searchParams.get('v');
       if (v && VIDEO_ID_RE.test(v)) return v;
+
+      const [, prefix, id] = url.pathname.split('/');
+      if (VIDEO_PATH_PREFIXES.has(prefix) && VIDEO_ID_RE.test(id ?? '')) return id;
     }
 
     if (url.hostname === 'youtu.be') {
       const id = url.pathname.slice(1).split('/')[0];
-      if (VIDEO_ID_RE.test(id)) return id;
-    }
-
-    if (url.pathname.startsWith('/embed/')) {
-      const id = url.pathname.split('/')[2];
       if (VIDEO_ID_RE.test(id)) return id;
     }
   } catch {

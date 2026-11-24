@@ -26,9 +26,24 @@ describe('extractVideoId', () => {
     expect(extractVideoId('https://www.youtube.com/embed/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
   });
 
+  test('extracts from shorts, live and /v/ URLs', () => {
+    expect(extractVideoId('https://www.youtube.com/shorts/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+    expect(extractVideoId('https://youtube.com/shorts/dQw4w9WgXcQ?feature=share')).toBe('dQw4w9WgXcQ');
+    expect(extractVideoId('https://www.youtube.com/live/dQw4w9WgXcQ?si=abc')).toBe('dQw4w9WgXcQ');
+    expect(extractVideoId('https://www.youtube.com/v/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+    expect(extractVideoId('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+  });
+
+  test('extracts from URLs without a scheme', () => {
+    expect(extractVideoId('youtube.com/watch?v=dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+    expect(extractVideoId('www.youtube.com/shorts/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+    expect(extractVideoId('youtu.be/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+  });
+
   test('returns null for invalid input', () => {
     expect(extractVideoId('not-a-video-id')).toBeNull();
     expect(extractVideoId('https://example.com')).toBeNull();
+    expect(extractVideoId('https://example.com/shorts/dQw4w9WgXcQ')).toBeNull();
     expect(extractVideoId('')).toBeNull();
   });
 });
