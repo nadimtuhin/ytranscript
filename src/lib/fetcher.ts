@@ -141,9 +141,14 @@ export function extractTracksFromHTML(html: string): CaptionTrack[] | null {
   const start = (match.index ?? 0) + match[0].length - 1;
   let depth = 0;
   let end = start;
+  let inString = false;
 
   for (let i = start; i < html.length; i++) {
-    if (html[i] === '{') depth++;
+    if (inString) {
+      if (html[i] === '\\') i++;
+      else if (html[i] === '"') inString = false;
+    } else if (html[i] === '"') inString = true;
+    else if (html[i] === '{') depth++;
     else if (html[i] === '}') {
       depth--;
       if (depth === 0) {

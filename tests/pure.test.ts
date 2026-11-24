@@ -80,6 +80,19 @@ describe('extractTracksFromHTML', () => {
     expect(tracks?.[0].languageCode).toBe('en');
   });
 
+  test('handles braces and escaped quotes inside string values', () => {
+    const playerResponse = {
+      videoDetails: { shortDescription: 'Code: if (x) { return "}"; } and a stray }' },
+      captions: {
+        playerCaptionsTracklistRenderer: {
+          captionTracks: [{ baseUrl: 'https://example.com/en', languageCode: 'en' }],
+        },
+      },
+    };
+    const html = `<script>var ytInitialPlayerResponse = ${JSON.stringify(playerResponse)};</script>`;
+    expect(extractTracksFromHTML(html)?.[0].languageCode).toBe('en');
+  });
+
   test('returns null when no playerResponse block exists', () => {
     expect(extractTracksFromHTML('<html></html>')).toBeNull();
   });
